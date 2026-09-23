@@ -23,6 +23,7 @@ part **AI tutor**, part **space simulator**.
 | 🤖 **ASTRA — AI Guide** | "Your intelligent guide to the universe" — live AI with offline knowledge-brain fallback |
 | ⚡ **Challenges** | 5 timed quizzes incl. the 12-question Grand Challenge |
 | 🏆 **Achievements** | 15 badges to unlock |
+| 🌍 **Global Leaderboard** | Supabase-powered worldwide explorer rankings — podium, medals, live XP standings |
 | 🧭 **Future Explorer** | Interest-driven educational career-path recommendations (aerospace engineer → mission specialist) |
 | 🔴 **MISSION TO MARS** | The signature simulation: spacecraft → launch window → fuel budget → deep-space emergencies → landing → surface science → full mission report |
 
@@ -45,8 +46,8 @@ Swapping providers later = one `fetch` call in `astraThink()`.
 Explorer progress (XP, badges, missions, academy) persists to **localStorage** and
 optionally syncs to **Supabase**:
 
-1. Create a project at [supabase.com](https://supabase.com) (or restore a paused one)
-2. Run `supabase-setup.sql` in the SQL Editor (creates `explorer_progress` table + demo RLS policies)
+1. Create a project at [supabase.com](https://supabase.com)
+2. Run `supabase-setup.sql` in the SQL Editor — creates `explorer_progress` **and** the `leaderboard` table (+ sample explorers), with demo RLS policies
 3. Put your project URL + anon key in `CONFIG` at the top of `index.html`
 
 The sync dot in the top bar shows status: 🟢 cloud active · ⚪ offline/local · 🟡 table missing.

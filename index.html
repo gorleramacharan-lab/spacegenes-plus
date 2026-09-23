@@ -457,6 +457,33 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;cur
 .set-row input,.set-row select{width:100%;background:rgba(8,14,34,.8);border:1px solid var(--line);border-radius:11px;color:var(--ink);padding:11px 14px;font-size:13px;outline:none}
 .set-row input:focus,.set-row select:focus{border-color:rgba(94,230,255,.55)}
 
+
+/* ---------- LEADERBOARD ---------- */
+.lb-podium{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px}
+.lb-pod{border:1px solid var(--line);border-radius:16px;padding:20px 14px;text-align:center;position:relative;overflow:hidden;
+  background:linear-gradient(165deg,rgba(18,29,64,.55),rgba(8,12,30,.6));transition:all .3s}
+.lb-pod:hover{transform:translateY(-4px)}
+.lb-pod .pod-ava{width:54px;height:54px;margin:0 auto 10px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:24px;
+  background:rgba(70,168,255,.08);border:1px solid rgba(125,165,255,.28)}
+.lb-pod b{display:block;font-size:13.5px;letter-spacing:.08em;text-transform:uppercase}
+.lb-pod .pod-xp{font-size:22px;font-weight:800;color:#dcebff;margin-top:4px}
+.lb-pod .pod-rank{font-size:9.5px;letter-spacing:.2em;color:var(--dim);text-transform:uppercase;margin-bottom:6px}
+.lb-pod.p1{border-color:rgba(255,196,90,.55);box-shadow:0 0 34px rgba(255,180,70,.15);order:2;padding-top:30px}
+.lb-pod.p1 .pod-ava{background:radial-gradient(circle at 35% 30%,rgba(255,215,120,.3),rgba(150,100,20,.15));border-color:rgba(255,196,90,.6);box-shadow:0 0 22px rgba(255,180,70,.25)}
+.lb-pod.p2{order:1}.lb-pod.p3{order:3}
+.lb-pod.you::after{content:"YOU";position:absolute;top:10px;right:10px;font-size:8.5px;letter-spacing:.18em;color:var(--cyan);
+  border:1px solid rgba(94,230,255,.45);border-radius:99px;padding:2px 8px;background:rgba(94,230,255,.1)}
+.lb-table{width:100%;border-collapse:collapse;min-width:560px}
+.lb-table th{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);text-align:left;padding:13px 14px;border-bottom:1px solid var(--line)}
+.lb-table td{padding:11px 14px;border-bottom:1px solid rgba(125,165,255,.08);font-size:13px;font-variant-numeric:tabular-nums}
+.lb-table tbody tr:last-child td{border-bottom:none}
+.lb-table tbody tr:hover td{background:rgba(70,168,255,.05)}
+.lb-table tr.you td{background:rgba(94,230,255,.07)}
+.lb-ava{display:inline-flex;width:24px;height:24px;border-radius:50%;align-items:center;justify-content:center;font-size:12px;
+  background:rgba(70,168,255,.1);border:1px solid rgba(125,165,255,.25);vertical-align:middle;margin-right:7px}
+.you-chip{font-size:8.5px;letter-spacing:.16em;color:var(--cyan);border:1px solid rgba(94,230,255,.45);border-radius:99px;
+  padding:2px 8px;margin-left:8px;background:rgba(94,230,255,.1);vertical-align:middle}
+@media (max-width:700px){.lb-podium{grid-template-columns:1fr}.lb-pod{order:0!important;padding-top:20px}}
 /* ---------- FOOTER / UTIL ---------- */
 .foot{border-top:1px solid var(--line);padding:30px 22px 40px;text-align:center;color:var(--dim);font-size:11px;letter-spacing:.2em;text-transform:uppercase;margin-top:auto}
 .foot b{color:#7ea6de}
@@ -548,7 +575,8 @@ const CONFIG = {
   BACKUP_MODELS: ["google/gemma-4-31b-it:free", "qwen/qwen3.8-27b:free", "nvidia/nemotron-3-super-120b-a12b:free"],
   SUPABASE_URL: "https://ymfydzlkdyfmbddfvlkm.supabase.co",
   SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltZnlkemxrZHlmbWJkZGZ2bGttIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDcyMjksImV4cCI6MjEwNTcyMzIyOX0.sryYWCfhixjeytGDknF5bMzg8mrEROV6qi_Ne_5yztQ",
-  SUPABASE_TABLE: "explorer_progress"
+  SUPABASE_TABLE: "explorer_progress",
+  SUPABASE_LB_TABLE: "leaderboard"
 };
 
 /* ---------- SAFE STORAGE (works even in sandboxed preview) ---------- */
@@ -682,6 +710,16 @@ async function cloudPush(){
     else if(r.status===404||r.status===400){ setSync("warn","Cloud table missing — run supabase-setup.sql"); }
     else setSync("off","Cloud offline — saved locally");
   }catch(e){ setSync("off","Cloud offline — saved locally"); }
+  lbPush();
+}
+function lbPush(){
+  if(!S.id) return;
+  try{
+    fetch(`${CONFIG.SUPABASE_URL}/rest/v1/${CONFIG.SUPABASE_LB_TABLE}`,{
+      method:"POST", headers:Object.assign(cloudHeaders(),{"Prefer":"resolution=merge-duplicates"}),
+      body:JSON.stringify({explorer_id:S.id, name:S.name||"Explorer", xp:S.xp, level:level(), rank:rank(), badges:S.badges.length, mars_best:S.mars.best||0, updated_at:new Date().toISOString()})
+    }).catch(()=>{});
+  }catch(e){}
 }
 
 /* ---------- STREAK ---------- */
@@ -709,7 +747,8 @@ const ICONS={
   rocket:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15c-2 0-5-1-5-1s.5-6 5-10c4.5 4 5 10 5 10s-3 1-5 1z"/><path d="M12 15v-4"/><circle cx="12" cy="8.6" r="1.3"/><path d="M9 16.5c-1 1-1.5 3-1.5 3s2-.5 3-1.5M15 16.5c1 1 1.5 3 1.5 3s-2-.5-3-1.5"/></svg>',
   moon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></svg>',
   spark:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9z"/></svg>',
-  bolt:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M13 2L4.5 13.5H11L9.5 22 19 10h-6.5z"/></svg>'
+  bolt:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M13 2L4.5 13.5H11L9.5 22 19 10h-6.5z"/></svg>',
+  podium:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 21V8h4v13M4 21v-6h4M16 15h4v6M2 21h20"/><path d="M12 2.6l.8 2.3 2.3.8-2.3.8-.8 2.3-.8-2.3-2.3-.8 2.3-.8z"/></svg>'
 };
 const NAV=[
   {id:"control",  label:"Mission Control", icon:"grid"},
@@ -721,6 +760,7 @@ const NAV=[
   {id:"astra",    label:"ASTRA AI",        icon:"cpu"},
   {id:"quiz",     label:"Challenges",      icon:"bolt"},
   {id:"badges",   label:"Achievements",    icon:"trophy"},
+  {id:"leaderboard",label:"Leaderboard",   icon:"podium"},
   {id:"future",   label:"Future Explorer", icon:"compass"},
   {id:"mars",     label:"Mars Mission",    icon:"rocket", mars:true}
 ];
@@ -1289,7 +1329,7 @@ VIEWS.control={render(root){
       ${panel("Next objectives","target", sugg.length? sugg.map(s=>`<div class="suggest-card" onclick="${s.go}"><div class="s-ico">${s.ico}</div><div><b>${s.t}</b><span>${s.s}</span></div></div>`).join("") : `<div class="center-text" style="padding:20px"><div style="font-size:34px">🏆</div><p class="muted small mt10">Everything complete, Commander. You are a true Mission Specialist.</p></div>`)}
       ${panel("Command modules","grid",`
         <div class="tile-nav">
-          ${NAV.filter(n=>n.id!=="control").map(n=>`<button class="tile" onclick="go('${n.id}')"><div class="t-ico">${ICONS[n.icon]}</div><b>${n.label}</b><span>${({solar:"Interactive planetary explorer",deep:"Black holes, stars & galaxies",missions:"Training missions with XP",academy:"Learning modules & ranks",sim:"Orbits, rockets & moon phases",astra:"AI guide to the universe",quiz:"Timed knowledge challenges",badges:"Achievement gallery",future:"Your path in space",mars:"Signature Mars simulation"})[n.id]}</span></button>`).join("")}
+          ${NAV.filter(n=>n.id!=="control").map(n=>`<button class="tile" onclick="go('${n.id}')"><div class="t-ico">${ICONS[n.icon]}</div><b>${n.label}</b><span>${({solar:"Interactive planetary explorer",deep:"Black holes, stars & galaxies",missions:"Training missions with XP",academy:"Learning modules & ranks",sim:"Orbits, rockets & moon phases",astra:"AI guide to the universe",quiz:"Timed knowledge challenges",badges:"Achievement gallery",leaderboard:"Global explorer rankings",future:"Your path in space",mars:"Signature Mars simulation"})[n.id]}</span></button>`).join("")}
         </div>`,"glow")}
     </div>
   </div></div>`;
@@ -1792,6 +1832,89 @@ VIEWS.badges={render(root){
     return `<div class="badge ${got?"earned":"locked"}"><div class="b-ico">${b.icon}</div><b>${b.name}</b><span>${b.d}</span>${got?`<div class="b-date">✓ ${S.badgeDates[b.id]||"EARNED"}</div>`:""}</div>`;
   }).join("")}</div></div>`;
 }};
+
+/* ============================================================
+   GLOBAL LEADERBOARD (Supabase)
+   ============================================================ */
+const LB_AVATARS=["🧑‍🚀","👩‍🚀","👨‍🚀","🛰️","🔭","🚀","🌙","⭐","☄️","🌌","🪐","🧑‍🔬"];
+function lbAvatar(name){ let h=0; for(const ch of String(name||"")) h=(h*31+ch.codePointAt(0))>>>0; return LB_AVATARS[h%LB_AVATARS.length]; }
+VIEWS.leaderboard={render(root){
+  root.innerHTML=`<div class="view" style="max-width:920px">
+  ${viewHead("Global rankings","Explorer Leaderboard","Every SpaceGenes+ explorer, ranked by XP earned across the universe. Synced live through Supabase cloud.")}
+  <div id="lbBody">
+    <div class="glass panel center-text" style="padding:46px">
+      <span class="typing" style="display:inline-flex"><i></i><i></i><i></i></span>
+      <p class="tiny muted mt10">Contacting the global network…</p>
+    </div>
+  </div>
+  <div class="row between mt14 wrap gap8">
+    <span class="tiny muted" id="lbStamp"></span>
+    <button class="btn btn-ghost btn-sm" onclick="go('leaderboard',null,true)">↻ Refresh</button>
+  </div>
+  </div>`;
+  lbFetch();
+}};
+function lbSetupCard(msg){
+  return `<div class="glass hud panel center-text" style="padding:38px">
+    <div style="font-size:38px;filter:drop-shadow(0 0 16px rgba(94,230,255,.4))">📡</div>
+    <p class="small muted mt10" style="max-width:430px;margin-left:auto;margin-right:auto">${msg}</p>
+    <p class="tiny muted mt14">Run <b class="acc">supabase-setup.sql</b> once in your Supabase SQL Editor — it creates the progress-sync table <b>and</b> this leaderboard, with sample explorers included.</p>
+  </div>`;
+}
+async function lbFetch(){
+  const body=document.getElementById("lbBody"); if(!body) return;
+  lbPush();
+  try{
+    const r=await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/${CONFIG.SUPABASE_LB_TABLE}?select=explorer_id,name,xp,level,rank,badges,mars_best&order=xp.desc&limit=50`,{headers:cloudHeaders()});
+    if(r.status===404||r.status===400){ body.innerHTML=lbSetupCard("The leaderboard table isn\'t set up yet."); return; }
+    if(!r.ok) throw 0;
+    const rows=await r.json();
+    const stamp=document.getElementById("lbStamp");
+    if(stamp) stamp.textContent="◈ LIVE · "+new Date().toLocaleTimeString();
+    if(!rows.length){
+      body.innerHTML=`<div class="glass hud panel center-text" style="padding:38px"><div style="font-size:38px">🌌</div><p class="small muted mt10">The board is empty — earn XP and you\'ll be the <b class="acc">first explorer ever</b> on it.</p></div>`;
+      return;
+    }
+    const medals=["🥇","🥈","🥉"];
+    const pod=rows.slice(0,3);
+    let html=`<div class="lb-podium">
+      ${pod.map((p2,i)=>`<div class="lb-pod p${i+1} ${p2.explorer_id===S.id?"you":""}">
+        <div class="pod-ava">${medals[i]||lbAvatar(p2.name)}</div>
+        <div class="pod-rank">${["1st","2nd","3rd"][i]} · LEVEL ${p2.level} · ${p2.rank}</div>
+        <b>${escHTML(String(p2.name||"Explorer").slice(0,24))}</b>
+        <div class="pod-xp">${(p2.xp||0).toLocaleString()} <span class="tiny muted">XP</span></div>
+        <div class="tiny muted">${p2.badges||0} badges · Mars best ${p2.mars_best||0}</div>
+      </div>`).join("")}
+    </div>`;
+    if(rows.length>3){
+      html+=`<div class="glass hud panel" style="padding:0;overflow-x:auto"><table class="lb-table">
+        <thead><tr><th>#</th><th>Explorer</th><th>Rank</th><th>Level</th><th>XP</th><th>Badges</th><th>Mars Best</th></tr></thead>
+        <tbody>
+        ${rows.slice(3).map((p2,i)=>`<tr class="${p2.explorer_id===S.id?"you":""}">
+          <td class="muted">${i+4}</td>
+          <td><span class="lb-ava">${lbAvatar(p2.name)}</span> ${escHTML(String(p2.name||"Explorer").slice(0,24))}${p2.explorer_id===S.id?'<span class="you-chip">YOU</span>':""}</td>
+          <td class="tiny">${p2.rank}</td><td>${p2.level}</td>
+          <td class="acc" style="font-weight:700">${(p2.xp||0).toLocaleString()}</td>
+          <td>${p2.badges||0}</td><td>${p2.mars_best||0}</td>
+        </tr>`).join("")}
+        </tbody></table></div>`;
+    }
+    const you=rows.find(x=>x.explorer_id===S.id);
+    if(!you){
+      html+=`<div class="glass panel mt14 row between wrap gap8">
+        <span class="small muted">📡 Your signal: <b class="acc">${escHTML(S.name)}</b> · ${S.xp} XP — outside the current top ${rows.length}</span>
+        <span class="tiny muted">Keep exploring to climb the board.</span>
+      </div>`;
+    } else {
+      html+=`<div class="glass panel mt14 row between wrap gap8" style="border-color:rgba(94,230,255,.35)">
+        <span class="small">✅ You are ranked <b class="acc">#${rows.indexOf(you)+1}</b> of ${rows.length} explorers — ${S.xp} XP and climbing.</span>
+      </div>`;
+    }
+    body.innerHTML=html;
+  }catch(e){
+    body.innerHTML=lbSetupCard("Couldn\'t reach the Supabase cloud right now — your progress is safe locally.");
+  }
+}
 
 /* ============================================================
    FUTURE EXPLORER
