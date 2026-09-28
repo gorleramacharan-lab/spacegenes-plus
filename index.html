@@ -552,7 +552,7 @@ kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;paddi
   <header class="topbar" id="topbar"></header>
   <main id="view-root"></main>
   <footer class="foot">
-    <b>SPACEGENES+</b> — EXPLORE BEYOND. LEARN BEYOND.<br>
+    <b onclick="goHome()" style="cursor:pointer" title="Back to Home">SPACEGENES+</b> — EXPLORE BEYOND. LEARN BEYOND.<br>
     <span style="opacity:.6">SPACE · INTELLIGENCE · EXPLORATION</span>
   </footer>
 </div>
@@ -748,7 +748,8 @@ const ICONS={
   moon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></svg>',
   spark:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9z"/></svg>',
   bolt:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M13 2L4.5 13.5H11L9.5 22 19 10h-6.5z"/></svg>',
-  podium:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 21V8h4v13M4 21v-6h4M16 15h4v6M2 21h20"/><path d="M12 2.6l.8 2.3 2.3.8-2.3.8-.8 2.3-.8-2.3-2.3-.8 2.3-.8z"/></svg>'
+  podium:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 21V8h4v13M4 21v-6h4M16 15h4v6M2 21h20"/><path d="M12 2.6l.8 2.3 2.3.8-2.3.8-.8 2.3-.8-2.3-2.3-.8 2.3-.8z"/></svg>',
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.2L12 3l9 8.2"/><path d="M5.5 9.8V21h13V9.8"/><path d="M10 21v-5.5h4V21"/></svg>'
 };
 const NAV=[
   {id:"control",  label:"Mission Control", icon:"grid"},
@@ -774,11 +775,11 @@ function renderTopbar(){
   const tb=document.getElementById("topbar"); if(!tb) return;
   const pct=Math.min(100,Math.round(xpInto()/xpSpan()*100));
   tb.innerHTML=`
-  <div class="tb-logo" onclick="go('control')">
+  <div class="tb-logo" onclick="goHome()" title="Back to Home">
     <svg viewBox="0 0 96 96" fill="none"><circle cx="48" cy="48" r="22" fill="#46a8ff"/><ellipse cx="48" cy="48" rx="42" ry="14" stroke="#5ee6ff" stroke-width="4" transform="rotate(-20 48 48)"/></svg>
     SPACEGENES<span class="plus">+</span>
   </div>
-  <nav class="tb-nav">${NAV.map(n=>`<button class="tb-btn${n.mars?" mars-nav":""}" id="nav-${n.id}" onclick="go('${n.id}')">${ICONS[n.icon]}<span>${n.label}</span></button>`).join("")}</nav>
+  <nav class="tb-nav"><button class="tb-btn" id="nav-home" onclick="goHome()" title="Home">${ICONS.home}<span>Home</span></button>${NAV.map(n=>`<button class="tb-btn${n.mars?" mars-nav":""}" id="nav-${n.id}" onclick="go('${n.id}')">${ICONS[n.icon]}<span>${n.label}</span></button>`).join("")}</nav>
   <div class="tb-right">
     <div class="xp-pill">
       <div class="row1"><span>LV ${level()} · ${rank()}</span><b>${S.xp} XP</b></div>
@@ -791,6 +792,7 @@ function renderTopbar(){
 let CURRENT_VIEW="";
 function renderIfActive(){ if(CURRENT_VIEW && VIEWS[CURRENT_VIEW]) go(CURRENT_VIEW, null, true); }
 function go(id, param, noScroll){
+  if(id==="home") return goHome();
   runCleanups();
   CURRENT_VIEW=id; ACTIVE=id;
   document.querySelectorAll(".tb-btn").forEach(b=>b.classList.toggle("active", b.id==="nav-"+id));
@@ -798,6 +800,16 @@ function go(id, param, noScroll){
   const v=VIEWS[id];
   if(v){ root.innerHTML=""; try{ v.render(root,param); }catch(e){ root.innerHTML=`<div class="view"><p class="badc">View error: ${e.message}</p></div>`; console.error(e);} }
   if(!noScroll) window.scrollTo({top:0,behavior:"smooth"});
+}
+function goHome(){
+  runCleanups();
+  CURRENT_VIEW=""; ACTIVE="";
+  document.querySelectorAll(".tb-btn").forEach(b=>b.classList.remove("active"));
+  const hero=document.getElementById("view-hero"); if(hero) hero.style.display="flex";
+  const app=document.getElementById("app"); if(app) app.style.display="none";
+  const dock=document.getElementById("astraDock"); if(dock) dock.style.display="none";
+  closeModal(); closePlanetPanel();
+  window.scrollTo({top:0,behavior:"smooth"});
 }
 function enterUniverse(){ document.getElementById("view-hero").style.display="none";
   const app=document.getElementById("app"); app.style.display="flex";
