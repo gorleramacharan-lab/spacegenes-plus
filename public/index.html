@@ -905,18 +905,18 @@ function goHome(){
 function enterUniverse(){ sfx("launch"); document.getElementById("view-hero").style.display="none";
   const app=document.getElementById("app"); app.style.display="flex";
   document.getElementById("astraDock").style.display="flex";
-  renderTopbar(); tickStreak(); cloudPull(); go("control");
+  renderTopbar(); tickStreak(); cloudPull(); musicAutoStart(); go("control");
   toast("WELCOME ABOARD", `Systems online, ${S.name}. Your mission awaits.`, "🛰");
 }
 function startMission(){ sfx("launch"); document.getElementById("view-hero").style.display="none";
   const app=document.getElementById("app"); app.style.display="flex";
   document.getElementById("astraDock").style.display="flex";
-  renderTopbar(); tickStreak(); go("mars");
+  renderTopbar(); tickStreak(); musicAutoStart(); go("mars");
 }
 function enterAndGo(id){ sfx("launch"); document.getElementById("view-hero").style.display="none";
   const app=document.getElementById("app"); app.style.display="flex";
   document.getElementById("astraDock").style.display="flex";
-  renderTopbar(); tickStreak(); cloudPull(); go(id);
+  renderTopbar(); tickStreak(); cloudPull(); musicAutoStart(); go(id);
 }
 function heroNext(){
   const today=new Date().toISOString().slice(0,10);
@@ -3530,16 +3530,16 @@ function musicStart(trackId){
     const id=trackId||(S.settings.music&&S.settings.music.track)||"drift";
     musicStopNodes();
     MUSIC.track=id; MUSIC.playing=true;
-    S.settings.music=Object.assign({},S.settings.music,{track:id,playing:true}); save();
+    S.settings.music=Object.assign({},S.settings.music,{track:id,playing:true,optOut:false}); save();
     MUSIC.master.gain.cancelScheduledValues(ctx.currentTime);
     MUSIC.master.gain.setTargetAtTime(mVol(),ctx.currentTime,0.5);
-    MUSIC.nodes=(id==="drift"?buildDrift():id==="dreams"?buildDreams():id==="pulse"?buildPulse():buildRed)();
+    MUSIC.nodes=(id==="drift"?buildDrift:id==="dreams"?buildDreams:id==="pulse"?buildPulse:buildRed)();
     updateMusicUI();
   }catch(e){}
 }
 function musicStop(){
   MUSIC.playing=false;
-  S.settings.music=Object.assign({},S.settings.music,{playing:false}); save();
+  S.settings.music=Object.assign({},S.settings.music,{playing:false,optOut:true}); save();
   musicStopNodes(); updateMusicUI();
 }
 function musicToggle(){
@@ -3582,7 +3582,7 @@ function renderMusicPanel(){
      <button class="btn ${MUSIC.playing?"btn-ghost":"btn-primary"} btn-sm" onclick="musicToggle()">${MUSIC.playing?"⏸ Pause audio":"▶ Play audio"}</button>
      <button class="chip ${S.settings.sfx!==false?"on":""}" onclick="S.settings.sfx=!(S.settings.sfx!==false);save();renderMusicPanel()">UI sounds</button>
    </div>
-   <p class="tiny muted" style="margin-top:12px">Generative audio — synthesized live in your browser. No downloads, plays forever.</p>`;
+   <p class="tiny muted" style="margin-top:12px">100% royalty-free — generated live in your browser. No files, no downloads, plays forever.</p>`;
 }
 
 /* ---------- TRACK 1: Deep Space Drift ---------- */
@@ -3602,6 +3602,29 @@ function buildDrift(){
   const bl=ctx.createOscillator(), blg=ctx.createGain();
   bl.frequency.value=.045; blg.gain.value=.022; bl.connect(blg); blg.connect(padG.gain); bl.start(); stops.push(()=>{try{bl.stop()}catch(e){}});
   MUSIC.timers.push(setInterval(()=>{ if(Math.random()<.55) tone(1174+Math.random()*1300,5,"sine",.018,bus); },6500));
+  /* cosmic wind — looping filtered noise, slowly breathing */
+  try{
+    const nb=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate), nd=nb.getChannelData(0);
+    for(let k=0;k<nd.length;k++) nd[k]=Math.random()*2-1;
+    const ns=ctx.createBufferSource(); ns.buffer=nb; ns.loop=true;
+    const nf=ctx.createBiquadFilter(); nf.type="bandpass"; nf.frequency.value=320; nf.Q.value=1.1;
+    const ng=ctx.createGain(); ng.gain.value=.013;
+    ns.connect(nf); nf.connect(ng); ng.connect(bus); ns.start();
+    const wl=ctx.createOscillator(), wgl=ctx.createGain();
+    wl.frequency.value=.03; wgl.gain.value=170; wl.connect(wgl); wgl.connect(nf.frequency); wl.start();
+    stops.push(()=>{try{ns.stop()}catch(e){} try{wl.stop()}catch(e){}});
+  }catch(e){}
+  /* subtle deep pulse — slow heartbeat of the ship */
+  MUSIC.timers.push(setInterval(()=>{ if(Math.random()<.6) tone(55,1.9,"sine",.03,bus); },5200));
+  /* faint breathing shimmer — high pad that swells and fades */
+  try{
+    [880,1108.73].forEach((f,fi)=>{ const o=ctx.createOscillator(); o.type="sine"; o.frequency.value=f;
+      const og=ctx.createGain(); og.gain.value=.006; o.connect(og); og.connect(bus); o.start();
+      const sl=ctx.createOscillator(), sg=ctx.createGain();
+      sl.frequency.value=.05+fi*.013; sg.gain.value=.004; sl.connect(sg); sg.connect(og.gain); sl.start();
+      stops.push(()=>{try{o.stop()}catch(e){} try{sl.stop()}catch(e){}});
+    });
+  }catch(e){}
   return {bus,stop:()=>{ stops.forEach(f=>f()); try{bus.disconnect()}catch(e){} }};
 }
 /* ---------- TRACK 2: Orbital Dreams ---------- */
@@ -3705,6 +3728,23 @@ function sfx(name){
     (SFX[name]||[]).forEach(a=>tone(a[0],a[1],a[4],a[3],MUSIC.sfxGain,a[2]));
   }catch(e){}
 }
+/* ---------- immersive ambient: start on app entry (post-interaction), pause when inactive ---------- */
+function musicAutoStart(){
+  try{
+    if(MUSIC.playing) return;
+    const m=S.settings.music||{};
+    if(m.optOut) return; /* explorer explicitly paused audio before — respect that */
+    musicStart(m.track&&m.track!=="red"?m.track:"drift");
+    setTimeout(()=>toast("AMBIENT AUDIO ONLINE","Immersive deep-space soundscape playing — adjust it from the music dock.", "🌌"),1500);
+  }catch(e){}
+}
+function musicVisibility(hidden){
+  try{
+    if(hidden){ if(MUSIC.ctx&&MUSIC.playing&&MUSIC.ctx.state==="running"){ MUSIC.hiddenPaused=true; MUSIC.ctx.suspend(); } }
+    else if(MUSIC.hiddenPaused){ MUSIC.hiddenPaused=false; if(MUSIC.ctx&&MUSIC.ctx.state==="suspended") MUSIC.ctx.resume(); }
+  }catch(e){}
+}
+document.addEventListener("visibilitychange",()=>musicVisibility(document.hidden));
 /* wake audio on first interaction + resume last session's music */
 document.addEventListener("pointerdown",()=>{
   try{
