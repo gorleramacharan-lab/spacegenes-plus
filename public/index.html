@@ -3493,14 +3493,16 @@ function audioCtx(){
       const AC=window.AudioContext||window.webkitAudioContext;
       if(!AC) return null;
       MUSIC.ctx=new AC();
-      MUSIC.comp=MUSIC.ctx.createDynamicsCompressor(); MUSIC.comp.connect(MUSIC.ctx.destination);
+      MUSIC.comp=MUSIC.ctx.createDynamicsCompressor();
+      try{ MUSIC.comp.threshold.value=-14; MUSIC.comp.knee.value=22; MUSIC.comp.ratio.value=2.5; MUSIC.comp.attack.value=.004; MUSIC.comp.release.value=.32; }catch(e){}
+      MUSIC.comp.connect(MUSIC.ctx.destination);
       MUSIC.master=MUSIC.ctx.createGain(); MUSIC.master.gain.value=0; MUSIC.master.connect(MUSIC.comp);
-      MUSIC.sfxGain=MUSIC.ctx.createGain(); MUSIC.sfxGain.gain.value=0.55; MUSIC.sfxGain.connect(MUSIC.comp);
+      MUSIC.sfxGain=MUSIC.ctx.createGain(); MUSIC.sfxGain.gain.value=0.85; MUSIC.sfxGain.connect(MUSIC.comp);
     }
     return MUSIC.ctx;
   }catch(e){ return null; }
 }
-function mVol(){ const m=S.settings.music||{}; return m.volume!==undefined?m.volume:0.6; }
+function mVol(){ const m=S.settings.music||{}; return m.volume!==undefined?m.volume:0.8; }
 function newBus(){ const bus=MUSIC.ctx.createGain(); bus.gain.value=1; bus.connect(MUSIC.master); return bus; }
 function tone(freq,dur,type,vol,dest,delay){
   const ctx=MUSIC.ctx; if(!ctx) return;
@@ -3588,40 +3590,40 @@ function renderMusicPanel(){
 /* ---------- TRACK 1: Deep Space Drift ---------- */
 function buildDrift(){
   const ctx=MUSIC.ctx, bus=newBus(), stops=[];
-  [[55,"sine",.16],[55.35,"sine",.13],[82.41,"sine",.08],[110,"triangle",.045]].forEach(a=>{
+  [[55,"sine",.34],[55.35,"sine",.28],[82.41,"sine",.2],[110,"triangle",.15]].forEach(a=>{
     const o=ctx.createOscillator(),og=ctx.createGain();
     o.type=a[1]; o.frequency.value=a[0]; og.gain.value=a[2];
     o.connect(og); og.connect(bus); o.start();
     stops.push(()=>{try{o.stop()}catch(e){}});
   });
   const filt=ctx.createBiquadFilter(); filt.type="lowpass"; filt.frequency.value=520; filt.Q.value=3;
-  const padG=ctx.createGain(); padG.gain.value=.05; filt.connect(padG); padG.connect(bus);
+  const padG=ctx.createGain(); padG.gain.value=.16; filt.connect(padG); padG.connect(bus);
   [220,277.18,329.63].forEach(f=>{ const o=ctx.createOscillator(); o.frequency.value=f; o.connect(filt); o.start(); stops.push(()=>{try{o.stop()}catch(e){}}); });
   const lfo=ctx.createOscillator(), lg=ctx.createGain();
   lfo.frequency.value=.06; lg.gain.value=340; lfo.connect(lg); lg.connect(filt.frequency); lfo.start(); stops.push(()=>{try{lfo.stop()}catch(e){}});
   const bl=ctx.createOscillator(), blg=ctx.createGain();
-  bl.frequency.value=.045; blg.gain.value=.022; bl.connect(blg); blg.connect(padG.gain); bl.start(); stops.push(()=>{try{bl.stop()}catch(e){}});
-  MUSIC.timers.push(setInterval(()=>{ if(Math.random()<.55) tone(1174+Math.random()*1300,5,"sine",.018,bus); },6500));
+  bl.frequency.value=.045; blg.gain.value=.06; bl.connect(blg); blg.connect(padG.gain); bl.start(); stops.push(()=>{try{bl.stop()}catch(e){}});
+  MUSIC.timers.push(setInterval(()=>{ if(Math.random()<.55) tone(1174+Math.random()*1300,5,"sine",.05,bus); },6500));
   /* cosmic wind — looping filtered noise, slowly breathing */
   try{
     const nb=ctx.createBuffer(1,ctx.sampleRate*2,ctx.sampleRate), nd=nb.getChannelData(0);
     for(let k=0;k<nd.length;k++) nd[k]=Math.random()*2-1;
     const ns=ctx.createBufferSource(); ns.buffer=nb; ns.loop=true;
     const nf=ctx.createBiquadFilter(); nf.type="bandpass"; nf.frequency.value=320; nf.Q.value=1.1;
-    const ng=ctx.createGain(); ng.gain.value=.013;
+    const ng=ctx.createGain(); ng.gain.value=.045;
     ns.connect(nf); nf.connect(ng); ng.connect(bus); ns.start();
     const wl=ctx.createOscillator(), wgl=ctx.createGain();
-    wl.frequency.value=.03; wgl.gain.value=170; wl.connect(wgl); wgl.connect(nf.frequency); wl.start();
+    wl.frequency.value=.03; wgl.gain.value=260; wl.connect(wgl); wgl.connect(nf.frequency); wl.start();
     stops.push(()=>{try{ns.stop()}catch(e){} try{wl.stop()}catch(e){}});
   }catch(e){}
   /* subtle deep pulse — slow heartbeat of the ship */
-  MUSIC.timers.push(setInterval(()=>{ if(Math.random()<.6) tone(55,1.9,"sine",.03,bus); },5200));
+  MUSIC.timers.push(setInterval(()=>{ if(Math.random()<.6) tone(55,1.9,"sine",.09,bus); },5200));
   /* faint breathing shimmer — high pad that swells and fades */
   try{
     [880,1108.73].forEach((f,fi)=>{ const o=ctx.createOscillator(); o.type="sine"; o.frequency.value=f;
-      const og=ctx.createGain(); og.gain.value=.006; o.connect(og); og.connect(bus); o.start();
+      const og=ctx.createGain(); og.gain.value=.016; o.connect(og); og.connect(bus); o.start();
       const sl=ctx.createOscillator(), sg=ctx.createGain();
-      sl.frequency.value=.05+fi*.013; sg.gain.value=.004; sl.connect(sg); sg.connect(og.gain); sl.start();
+      sl.frequency.value=.05+fi*.013; sg.gain.value=.01; sl.connect(sg); sg.connect(og.gain); sl.start();
       stops.push(()=>{try{o.stop()}catch(e){} try{sl.stop()}catch(e){}});
     });
   }catch(e){}
@@ -3637,7 +3639,7 @@ function buildDreams(){
   const padGains=chords.map(()=>{ const g=ctx.createGain(); g.gain.value=0; g.connect(bus); return g; });
   chords.forEach((ch,ci)=>ch.forEach(f=>{
     const o=ctx.createOscillator(); o.type="triangle"; o.frequency.value=f;
-    const og=ctx.createGain(); og.gain.value=.03;
+    const og=ctx.createGain(); og.gain.value=.09;
     o.connect(og); og.connect(padGains[ci]); o.start();
     stops.push(()=>{try{o.stop()}catch(e){}});
   }));
@@ -3650,7 +3652,7 @@ function buildDreams(){
   const scale=[261.63,293.66,329.63,392.00,440.00,523.25,587.33,659.26];
   MUSIC.timers.push(setInterval(()=>{
     if(Math.random()<.7){ const f=scale[Math.floor(Math.random()*scale.length)];
-      tone(f,2.8,"sine",.05,delay); tone(f*2,1.6,"sine",.012,bus); }
+      tone(f,2.8,"sine",.13,delay); tone(f*2,1.6,"sine",.03,bus); }
   },1500));
   return {bus,stop:()=>{ stops.forEach(f=>f()); try{bus.disconnect()}catch(e){} }};
 }
@@ -3665,7 +3667,7 @@ function buildPulse(){
   prog.forEach((ch,pi)=>ch.forEach(f=>{
     const o=ctx.createOscillator(); o.frequency.value=f;
     const o2=ctx.createOscillator(); o2.frequency.value=f*1.003;
-    const og=ctx.createGain(); og.gain.value=.032;
+    const og=ctx.createGain(); og.gain.value=.095;
     o.connect(og); o2.connect(og); og.connect(bedGains[pi]);
     o.start(); o2.start(); stops.push(()=>{try{o.stop();o2.stop()}catch(e){}});
   }));
@@ -3677,21 +3679,21 @@ function buildPulse(){
   MUSIC.timers.push(setInterval(sw,8000));
   const pat=[0,1,2,3,2,1]; let ai=0;
   MUSIC.timers.push(setInterval(()=>{
-    tone(curChord[pat[ai]]*2,0.9,"sine",.055,delay);
+    tone(curChord[pat[ai]]*2,0.9,"sine",.14,delay);
     ai=(ai+1)%pat.length;
   },640));
-  MUSIC.timers.push(setInterval(()=>{ tone(2400,0.03,"square",.012,bus); },1280));
+  MUSIC.timers.push(setInterval(()=>{ tone(2400,0.03,"square",.026,bus); },1280));
   return {bus,stop:()=>{ stops.forEach(f=>f()); try{bus.disconnect()}catch(e){} }};
 }
 /* ---------- TRACK 4: Red Planet ---------- */
 function buildRed(){
   const ctx=MUSIC.ctx, bus=newBus(), stops=[];
   const sub=ctx.createOscillator(); sub.frequency.value=41.2;
-  const subG=ctx.createGain(); subG.gain.value=.13;
+  const subG=ctx.createGain(); subG.gain.value=.3;
   sub.connect(subG); subG.connect(bus); sub.start(); stops.push(()=>{try{sub.stop()}catch(e){}});
   const hb=ctx.createOscillator(), hbg=ctx.createGain();
-  hb.frequency.value=.18; hbg.gain.value=.09; hb.connect(hbg); hbg.connect(subG.gain); hb.start(); stops.push(()=>{try{hb.stop()}catch(e){}});
-  [61.74,65.41].forEach(f=>{ const o=ctx.createOscillator(); o.frequency.value=f; const g=ctx.createGain(); g.gain.value=.05; o.connect(g); g.connect(bus); o.start(); stops.push(()=>{try{o.stop()}catch(e){}}); });
+  hb.frequency.value=.18; hbg.gain.value=.18; hb.connect(hbg); hbg.connect(subG.gain); hb.start(); stops.push(()=>{try{hb.stop()}catch(e){}});
+  [61.74,65.41].forEach(f=>{ const o=ctx.createOscillator(); o.frequency.value=f; const g=ctx.createGain(); g.gain.value=.14; o.connect(g); g.connect(bus); o.start(); stops.push(()=>{try{o.stop()}catch(e){}}); });
   const len=2*ctx.sampleRate, buf=ctx.createBuffer(1,len,ctx.sampleRate), d=buf.getChannelData(0);
   let last=0; for(let i=0;i<len;i++){ const w=Math.random()*2-1; last=(last+.02*w)/1.02; d[i]=last*3.5; }
   const src=ctx.createBufferSource(); src.buffer=buf; src.loop=true;
@@ -3701,7 +3703,7 @@ function buildRed(){
   const wl=ctx.createOscillator(), wlg=ctx.createGain();
   wl.frequency.value=.07; wlg.gain.value=180; wl.connect(wlg); wlg.connect(nf.frequency); wl.start(); stops.push(()=>{try{wl.stop()}catch(e){}});
   const notes=[220,246.94,261.63,311.13,329.63];
-  MUSIC.timers.push(setInterval(()=>{ if(Math.random()<.4) tone(notes[Math.floor(Math.random()*notes.length)],3.5,"sine",.028,bus); },4200));
+  MUSIC.timers.push(setInterval(()=>{ if(Math.random()<.4) tone(notes[Math.floor(Math.random()*notes.length)],3.5,"sine",.07,bus); },4200));
   return {bus,stop:()=>{ stops.forEach(f=>f()); try{bus.disconnect()}catch(e){} }};
 }
 /* ---------- UI SOUND EFFECTS ---------- */
@@ -3720,7 +3722,7 @@ function sfx(name){
     if(name==="launch"){
       const t=ctx.currentTime, o=ctx.createOscillator(), g=ctx.createGain(), f=ctx.createBiquadFilter();
       o.type="sawtooth"; o.frequency.setValueAtTime(70,t); o.frequency.exponentialRampToValueAtTime(360,t+1.1);
-      g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(.05,t+.15); g.gain.exponentialRampToValueAtTime(.0001,t+1.3);
+      g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(.12,t+.15); g.gain.exponentialRampToValueAtTime(.0001,t+1.3);
       f.type="lowpass"; f.frequency.value=900;
       o.connect(f); f.connect(g); g.connect(MUSIC.sfxGain); o.start(t); o.stop(t+1.4);
       return;
@@ -3773,7 +3775,8 @@ document.addEventListener("click",e=>{
    BOOT
    ============================================================ */
 (function boot(){
-  if(!S.settings.music) S.settings.music={track:"drift",playing:false,volume:0.6};
+  if(!S.settings.music) S.settings.music={track:"drift",playing:false,volume:0.8};
+  if(S.settings.music.volume===0.6) S.settings.music.volume=0.8; /* migrate old silent-default */
   if(S.settings.sfx===undefined) S.settings.sfx=true;
   if(!S.id){ S.id=uid(); save(false); }
   const _addXP=addXP;
