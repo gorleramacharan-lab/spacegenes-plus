@@ -484,6 +484,33 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;cur
 .you-chip{font-size:8.5px;letter-spacing:.16em;color:var(--cyan);border:1px solid rgba(94,230,255,.45);border-radius:99px;
   padding:2px 8px;margin-left:8px;background:rgba(94,230,255,.1);vertical-align:middle}
 @media (max-width:700px){.lb-podium{grid-template-columns:1fr}.lb-pod{order:0!important;padding-top:20px}}
+/* ---------- SPACE AUDIO ---------- */
+.music-dock{position:fixed;left:22px;bottom:22px;z-index:60;width:58px;height:58px;border-radius:50%;border:none;cursor:pointer;
+  background:linear-gradient(135deg,#c4b5fd,#a78bfa 45%,#46a8ff);box-shadow:0 0 30px rgba(124,92,240,.5),inset 0 1px 0 rgba(255,255,255,.4);
+  display:flex;align-items:center;justify-content:center;transition:all .3s}
+.music-dock:hover{transform:scale(1.1);box-shadow:0 0 46px rgba(167,139,250,.75),inset 0 1px 0 rgba(255,255,255,.4)}
+.music-dock svg{width:25px;height:25px;color:#031022}
+.music-dock .eq{display:none;align-items:flex-end;gap:3px;height:22px}
+.music-dock .eq i{width:4px;background:#031022;border-radius:2px;animation:eqb 1s ease-in-out infinite}
+.music-dock .eq i:nth-child(1){height:26%}
+.music-dock .eq i:nth-child(2){height:78%;animation-delay:.22s}
+.music-dock .eq i:nth-child(3){height:48%;animation-delay:.44s}
+.music-dock.playing svg{display:none}
+.music-dock.playing .eq{display:flex}
+@keyframes eqb{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
+.music-panel{position:fixed;left:22px;bottom:92px;z-index:70;width:min(330px,calc(100vw - 44px));padding:20px;
+  background:linear-gradient(160deg,rgba(22,18,52,.92),rgba(9,10,28,.95));animation:mUp .35s cubic-bezier(.2,.8,.2,1)}
+.mp-track{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin-bottom:8px;cursor:pointer;transition:all .25s;background:rgba(10,18,42,.4)}
+.mp-track:hover{border-color:rgba(167,139,250,.55);transform:translateX(3px)}
+.mp-track.on{border-color:rgba(167,139,250,.7);background:rgba(124,92,240,.12);box-shadow:0 0 16px rgba(124,92,240,.15)}
+.mp-track .mp-ico{font-size:19px;flex:none}
+.mp-track b{display:block;font-size:12px;letter-spacing:.06em}
+.mp-track span{font-size:10px;color:var(--mut)}
+.mp-eq{margin-left:auto;display:none;align-items:flex-end;gap:2px;height:14px;flex:none}
+.mp-eq i{width:3px;background:var(--vio);border-radius:1px;animation:eqb 1.1s ease-in-out infinite}
+.mp-eq i:nth-child(1){height:60%}.mp-eq i:nth-child(2){height:100%;animation-delay:.2s}.mp-eq i:nth-child(3){height:40%;animation-delay:.4s}
+.mp-track.playing .mp-eq{display:flex}
+
 /* ---------- FOOTER / UTIL ---------- */
 .foot{border-top:1px solid var(--line);padding:30px 22px 40px;text-align:center;color:var(--dim);font-size:11px;letter-spacing:.2em;text-transform:uppercase;margin-top:auto}
 .foot b{color:#7ea6de}
@@ -560,6 +587,12 @@ kbd{border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;paddi
 <button class="astra-dock" id="astraDock" onclick="go('astra')" title="Ask ASTRA">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/><circle cx="12" cy="12" r="3.4"/></svg>
 </button>
+
+<button class="music-dock" id="musicDock" onclick="musicTogglePanel(event)" title="Space Audio — generative soundscapes">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+  <span class="eq"><i></i><i></i><i></i></span>
+</button>
+<div class="music-panel glass hud hidden" id="musicPanel"></div>
 
 <div class="toast-wrap" id="toastWrap"></div>
 <div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()"><div class="modal glass hud" id="modalBox"></div></div>
@@ -639,11 +672,13 @@ function toast(title, sub, icon="✦", gold=false){
   setTimeout(()=>{ t.classList.add("out"); setTimeout(()=>t.remove(),450); }, 4200);
 }
 function addXP(n, why){
+  sfx("xp");
   const before=level();
   S.xp+=n; save();
   toast(`+${n} XP`, why, "⚡");
   const after=level();
   if(after>before){
+    sfx("levelup");
     setTimeout(()=>{ openModal(`
       <div class="center-text">
         <div class="lvlup-ico">🚀</div>
@@ -662,7 +697,7 @@ function award(id, silent){
   const b=BADGES.find(x=>x.id===id); if(!b) return;
   S.badges.push(id); S.badgeDates[id]=new Date().toISOString().slice(0,10);
   save();
-  if(!silent){ toast("BADGE UNLOCKED", b.name, b.icon, true); if(b.xp) addXP(b.xp, "Badge reward — "+b.name); }
+  if(!silent){ sfx("badge"); toast("BADGE UNLOCKED", b.name, b.icon, true); if(b.xp) addXP(b.xp, "Badge reward — "+b.name); }
   renderTopbar();
 }
 
@@ -794,6 +829,7 @@ function renderIfActive(){ if(CURRENT_VIEW && VIEWS[CURRENT_VIEW]) go(CURRENT_VI
 function go(id, param, noScroll){
   if(id==="home") return goHome();
   runCleanups();
+  if(id==="mars" && MUSIC.playing && MUSIC.track!=="red") musicStart("red");
   CURRENT_VIEW=id; ACTIVE=id;
   document.querySelectorAll(".tb-btn").forEach(b=>b.classList.toggle("active", b.id==="nav-"+id));
   const root=document.getElementById("view-root");
@@ -811,13 +847,13 @@ function goHome(){
   closeModal(); closePlanetPanel();
   window.scrollTo({top:0,behavior:"smooth"});
 }
-function enterUniverse(){ document.getElementById("view-hero").style.display="none";
+function enterUniverse(){ sfx("launch"); document.getElementById("view-hero").style.display="none";
   const app=document.getElementById("app"); app.style.display="flex";
   document.getElementById("astraDock").style.display="flex";
   renderTopbar(); tickStreak(); cloudPull(); go("control");
   toast("WELCOME ABOARD", `Systems online, ${S.name}. Your mission awaits.`, "🛰");
 }
-function startMission(){ document.getElementById("view-hero").style.display="none";
+function startMission(){ sfx("launch"); document.getElementById("view-hero").style.display="none";
   const app=document.getElementById("app"); app.style.display="flex";
   document.getElementById("astraDock").style.display="flex";
   renderTopbar(); tickStreak(); go("mars");
@@ -1428,7 +1464,7 @@ function divePick(btn,qi,oi,pid){
   document.querySelectorAll(`#diveQuiz > div:nth-child(${qi+1}) .quiz-opt`).forEach(b=>b.classList.remove("pick"));
   btn.classList.add(oi===q.a?"right":"wrong");
   why.innerHTML=`<div class="q-why">${oi===q.a?"✓ Correct. ":"✗ Not quite. "}${q.why}</div>`;
-  DIVE_SCORE[pid]=DIVE_SCORE[pid]||{n:0,done:0}; DIVE_SCORE[pid].done++; if(oi===q.a) DIVE_SCORE[pid].n++;
+  DIVE_SCORE[pid]=DIVE_SCORE[pid]||{n:0,done:0}; DIVE_SCORE[pid].done++; if(oi===q.a){ DIVE_SCORE[pid].n++; sfx("right"); } else sfx("wrong");
   if(DIVE_SCORE[pid].done===p.quiz.length){
     const pass=DIVE_SCORE[pid].n>=2;
     if(pass){ addXP(35, p.name+" knowledge check passed"); }
@@ -1615,7 +1651,7 @@ function trMulti(i){
 function trQuizPick(btn,i){
   const st=TR.m.steps[TR.step]; const q=TR.curQuiz||st.q;
   btn.classList.add(i===q.a?"right":"wrong");
-  if(i===q.a) TR.score++;
+  if(i===q.a){ TR.score++; sfx("right"); } else sfx("wrong");
   trFeedback([`${i===q.a?"✓ Correct — ":"✗ Not quite — "}${q.why}`], st);
 }
 function trOrder(i){
@@ -1724,7 +1760,7 @@ function modPick(qi,oi,id){
   if(why.dataset.done) return; why.dataset.done="1";
   document.getElementById(`mq-${qi}-${oi}`).classList.add(oi===q.a?"right":"wrong");
   why.innerHTML=`<div class="q-why">${oi===q.a?"✓":"✗"} ${q.why}</div>`;
-  MOD_RUN[id]=MOD_RUN[id]||{n:0,done:0}; MOD_RUN[id].done++; if(oi===q.a) MOD_RUN[id].n++;
+  MOD_RUN[id]=MOD_RUN[id]||{n:0,done:0}; MOD_RUN[id].done++; if(oi===q.a){ MOD_RUN[id].n++; sfx("right"); } else sfx("wrong");
   if(MOD_RUN[id].done===m.quiz.length){
     const n=MOD_RUN[id].n, pass=n>=2;
     const first=!(S.modules[id]&&S.modules[id].done);
@@ -1806,7 +1842,7 @@ function qzPick(oi){
   const opts=document.querySelectorAll("#qzBody .quiz-opt");
   if(oi>=0) opts[oi].classList.add(oi===item.a?"right":"wrong");
   opts[item.a].classList.add("right");
-  if(oi===item.a) QZ.n++;
+  if(oi===item.a){ QZ.n++; sfx("right"); } else sfx("wrong");
   why.innerHTML=`<div class="q-why">${oi===item.a?"✓ Correct.":oi===-1?"⏱ Time's up. ":"✗ Not quite. "}${item.why}</div>
   <button class="btn btn-primary btn-sm mt14" onclick="qzNext()">${i+1<q.qs.length?"Next Question →":"See Results"}</button>`;
   why.scrollIntoView({behavior:"smooth",block:"center"});
@@ -2481,6 +2517,7 @@ VIEWS.mars={render(root){
   </div>`;
 }};
 function marsBegin(){
+  sfx("launch");
   MRS={phase:"craft", fuel:0, hull:100, sci:0, pts:0, score:600, log:[], facts:[], alloc:null, craft:null, window:null, events:[], ei:0, edl:null, exps:[], failed:false};
   marsPhase_craft();
 }
@@ -2690,7 +2727,7 @@ function marsSciDone(){
   marsReport();
 }
 function marsReport(){
-  MRS.phase="report";
+  MRS.phase="report"; sfx("levelup");
   const score=Math.max(0,Math.round(600+MRS.sci+MRS.fuel*7+MRS.hull*4+MRS.pts*4));
   const grade=score>=1700?"S":score>=1400?"A":score>=1100?"B":score>=850?"C":"D";
   const xp=Math.round(score/9);
@@ -2729,7 +2766,7 @@ function marsReport(){
   } else addXP(Math.round(xp/2),"Mars attempt — lessons learned");
 }
 function marsFail(reason){
-  MRS.phase="report";
+  MRS.phase="report"; sfx("wrong");
   S.mars.runs++; save();
   const root=document.getElementById("view-root");
   root.innerHTML=`<div class="view" style="max-width:700px">
@@ -2748,9 +2785,264 @@ function marsFail(reason){
 }
 
 /* ============================================================
+   SPACE AUDIO SYSTEM — generative music + UI sounds (Web Audio API)
+   No audio files: every sound is synthesized live in the browser.
+   ============================================================ */
+const MUSIC_TRACKS=[
+ {id:"drift", icon:"🌌",name:"Deep Space Drift",  desc:"Weightless drones · interstellar calm"},
+ {id:"dreams",icon:"🛰️",name:"Orbital Dreams",   desc:"Gentle arpeggios over warm pads"},
+ {id:"pulse", icon:"⏱️",name:"Interstellar Pulse",desc:"Ticking motif · cosmic urgency"},
+ {id:"red",   icon:"🔴",name:"Red Planet",        desc:"Sub pulses · Martian winds"}
+];
+const MUSIC={ctx:null,master:null,comp:null,sfxGain:null,nodes:null,timers:[],playing:false,track:null,autoTried:false};
+function audioCtx(){
+  try{
+    if(!MUSIC.ctx){
+      const AC=window.AudioContext||window.webkitAudioContext;
+      if(!AC) return null;
+      MUSIC.ctx=new AC();
+      MUSIC.comp=MUSIC.ctx.createDynamicsCompressor(); MUSIC.comp.connect(MUSIC.ctx.destination);
+      MUSIC.master=MUSIC.ctx.createGain(); MUSIC.master.gain.value=0; MUSIC.master.connect(MUSIC.comp);
+      MUSIC.sfxGain=MUSIC.ctx.createGain(); MUSIC.sfxGain.gain.value=0.55; MUSIC.sfxGain.connect(MUSIC.comp);
+    }
+    return MUSIC.ctx;
+  }catch(e){ return null; }
+}
+function mVol(){ const m=S.settings.music||{}; return m.volume!==undefined?m.volume:0.6; }
+function newBus(){ const bus=MUSIC.ctx.createGain(); bus.gain.value=1; bus.connect(MUSIC.master); return bus; }
+function tone(freq,dur,type,vol,dest,delay){
+  const ctx=MUSIC.ctx; if(!ctx) return;
+  const t=ctx.currentTime+(delay||0);
+  const o=ctx.createOscillator(), g=ctx.createGain();
+  o.type=type||"sine"; o.frequency.value=freq;
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.linearRampToValueAtTime(vol||0.08,t+0.04);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g); g.connect(dest||MUSIC.master);
+  o.start(t); o.stop(t+dur+0.05);
+}
+function musicStopNodes(){
+  try{
+    MUSIC.timers.forEach(clearInterval); MUSIC.timers=[];
+    const nds=MUSIC.nodes; MUSIC.nodes=null;
+    if(nds&&MUSIC.ctx){
+      try{ nds.bus.gain.setTargetAtTime(0.0001,MUSIC.ctx.currentTime,0.18); }catch(e){}
+      setTimeout(()=>{ try{ nds.stop(); }catch(e){} },650);
+    }
+  }catch(e){}
+}
+function musicStart(trackId){
+  try{
+    const ctx=audioCtx(); if(!ctx) return;
+    if(ctx.state==="suspended") ctx.resume();
+    const id=trackId||(S.settings.music&&S.settings.music.track)||"drift";
+    musicStopNodes();
+    MUSIC.track=id; MUSIC.playing=true;
+    S.settings.music=Object.assign({},S.settings.music,{track:id,playing:true}); save();
+    MUSIC.master.gain.cancelScheduledValues(ctx.currentTime);
+    MUSIC.master.gain.setTargetAtTime(mVol(),ctx.currentTime,0.5);
+    MUSIC.nodes=(id==="drift"?buildDrift():id==="dreams"?buildDreams():id==="pulse"?buildPulse():buildRed)();
+    updateMusicUI();
+  }catch(e){}
+}
+function musicStop(){
+  MUSIC.playing=false;
+  S.settings.music=Object.assign({},S.settings.music,{playing:false}); save();
+  musicStopNodes(); updateMusicUI();
+}
+function musicToggle(){
+  if(MUSIC.playing) musicStop();
+  else musicStart(MUSIC.track||(S.settings.music&&S.settings.music.track)||"drift");
+}
+function musicSetVolume(v){
+  S.settings.music=Object.assign({},S.settings.music,{volume:+v}); save();
+  if(MUSIC.ctx&&MUSIC.playing) MUSIC.master.gain.setTargetAtTime(+v,MUSIC.ctx.currentTime,0.15);
+}
+function updateMusicUI(){
+  const d=document.getElementById("musicDock"); if(d) d.classList.toggle("playing",MUSIC.playing);
+  const p=document.getElementById("musicPanel");
+  if(p&&!p.classList.contains("hidden")) renderMusicPanel();
+}
+function musicTogglePanel(e){
+  if(e&&e.stopPropagation) e.stopPropagation();
+  const p=document.getElementById("musicPanel"); if(!p) return;
+  p.classList.toggle("hidden");
+  if(!p.classList.contains("hidden")) renderMusicPanel();
+}
+function renderMusicPanel(){
+  const p=document.getElementById("musicPanel"); if(!p) return;
+  p.innerHTML=`
+   <div class="row between" style="margin-bottom:12px">
+     <div class="panel-title" style="margin:0">◈ SPACE AUDIO</div>
+     <button class="gear-btn" style="width:26px;height:26px" onclick="musicTogglePanel()">✕</button>
+   </div>
+   <div>${MUSIC_TRACKS.map(t=>`
+     <div class="mp-track ${MUSIC.playing&&MUSIC.track===t.id?"on playing":""}" onclick="musicStart('${t.id}')">
+       <span class="mp-ico">${t.icon}</span>
+       <div><b>${t.name}</b><span>${t.desc}</span></div>
+       <div class="mp-eq"><i></i><i></i><i></i></div>
+     </div>`).join("")}</div>
+   <div class="ctrl" style="margin-top:14px">
+     <label>Volume <b id="mpVol">${Math.round(mVol()*100)}%</b></label>
+     <input type="range" min="0" max="1" step="0.05" value="${mVol()}" oninput="musicSetVolume(this.value);document.getElementById('mpVol').textContent=Math.round(this.value*100)+'%'">
+   </div>
+   <div class="row between" style="margin-top:14px">
+     <button class="btn ${MUSIC.playing?"btn-ghost":"btn-primary"} btn-sm" onclick="musicToggle()">${MUSIC.playing?"⏸ Pause audio":"▶ Play audio"}</button>
+     <button class="chip ${S.settings.sfx!==false?"on":""}" onclick="S.settings.sfx=!(S.settings.sfx!==false);save();renderMusicPanel()">UI sounds</button>
+   </div>
+   <p class="tiny muted" style="margin-top:12px">Generative audio — synthesized live in your browser. No downloads, plays forever.</p>`;
+}
+
+/* ---------- TRACK 1: Deep Space Drift ---------- */
+function buildDrift(){
+  const ctx=MUSIC.ctx, bus=newBus(), stops=[];
+  [[55,"sine",.16],[55.35,"sine",.13],[82.41,"sine",.08],[110,"triangle",.045]].forEach(a=>{
+    const o=ctx.createOscillator(),og=ctx.createGain();
+    o.type=a[1]; o.frequency.value=a[0]; og.gain.value=a[2];
+    o.connect(og); og.connect(bus); o.start();
+    stops.push(()=>{try{o.stop()}catch(e){}});
+  });
+  const filt=ctx.createBiquadFilter(); filt.type="lowpass"; filt.frequency.value=520; filt.Q.value=3;
+  const padG=ctx.createGain(); padG.gain.value=.05; filt.connect(padG); padG.connect(bus);
+  [220,277.18,329.63].forEach(f=>{ const o=ctx.createOscillator(); o.frequency.value=f; o.connect(filt); o.start(); stops.push(()=>{try{o.stop()}catch(e){}}); });
+  const lfo=ctx.createOscillator(), lg=ctx.createGain();
+  lfo.frequency.value=.06; lg.gain.value=340; lfo.connect(lg); lg.connect(filt.frequency); lfo.start(); stops.push(()=>{try{lfo.stop()}catch(e){}});
+  const bl=ctx.createOscillator(), blg=ctx.createGain();
+  bl.frequency.value=.045; blg.gain.value=.022; bl.connect(blg); blg.connect(padG.gain); bl.start(); stops.push(()=>{try{bl.stop()}catch(e){}});
+  MUSIC.timers.push(setInterval(()=>{ if(Math.random()<.55) tone(1174+Math.random()*1300,5,"sine",.018,bus); },6500));
+  return {bus,stop:()=>{ stops.forEach(f=>f()); try{bus.disconnect()}catch(e){} }};
+}
+/* ---------- TRACK 2: Orbital Dreams ---------- */
+function buildDreams(){
+  const ctx=MUSIC.ctx, bus=newBus(), stops=[];
+  const delay=ctx.createDelay(2), fb=ctx.createGain(), wet=ctx.createGain();
+  delay.delayTime.value=.44; fb.gain.value=.36; wet.gain.value=.6;
+  delay.connect(fb); fb.connect(delay); delay.connect(wet); wet.connect(bus);
+  const chords=[[130.81,164.81,196.00,246.94],[110.00,130.81,164.81,220.00],[146.83,174.61,220.00,261.63],[123.47,146.83,196.00,246.94]];
+  const padGains=chords.map(()=>{ const g=ctx.createGain(); g.gain.value=0; g.connect(bus); return g; });
+  chords.forEach((ch,ci)=>ch.forEach(f=>{
+    const o=ctx.createOscillator(); o.type="triangle"; o.frequency.value=f;
+    const og=ctx.createGain(); og.gain.value=.03;
+    o.connect(og); og.connect(padGains[ci]); o.start();
+    stops.push(()=>{try{o.stop()}catch(e){}});
+  }));
+  let ci=0;
+  const sw=()=>{ const t=ctx.currentTime;
+    padGains.forEach((g,i)=>{ g.gain.cancelScheduledValues(t); g.gain.setTargetAtTime(i===ci?1:0.0001,t,2.2); });
+    ci=(ci+1)%chords.length; };
+  sw();
+  MUSIC.timers.push(setInterval(sw,11000));
+  const scale=[261.63,293.66,329.63,392.00,440.00,523.25,587.33,659.26];
+  MUSIC.timers.push(setInterval(()=>{
+    if(Math.random()<.7){ const f=scale[Math.floor(Math.random()*scale.length)];
+      tone(f,2.8,"sine",.05,delay); tone(f*2,1.6,"sine",.012,bus); }
+  },1500));
+  return {bus,stop:()=>{ stops.forEach(f=>f()); try{bus.disconnect()}catch(e){} }};
+}
+/* ---------- TRACK 3: Interstellar Pulse ---------- */
+function buildPulse(){
+  const ctx=MUSIC.ctx, bus=newBus(), stops=[];
+  const delay=ctx.createDelay(2), fb=ctx.createGain(), wet=ctx.createGain();
+  delay.delayTime.value=.32; fb.gain.value=.42; wet.gain.value=.5;
+  delay.connect(fb); fb.connect(delay); delay.connect(wet); wet.connect(bus);
+  const prog=[[110.00,164.81,220.00,261.63],[87.31,130.81,174.61,220.00],[98.00,146.83,196.00,246.94],[103.83,155.56,207.65,261.63]];
+  const bedGains=prog.map(()=>{ const g=ctx.createGain(); g.gain.value=0; g.connect(bus); return g; });
+  prog.forEach((ch,pi)=>ch.forEach(f=>{
+    const o=ctx.createOscillator(); o.frequency.value=f;
+    const o2=ctx.createOscillator(); o2.frequency.value=f*1.003;
+    const og=ctx.createGain(); og.gain.value=.032;
+    o.connect(og); o2.connect(og); og.connect(bedGains[pi]);
+    o.start(); o2.start(); stops.push(()=>{try{o.stop();o2.stop()}catch(e){}});
+  }));
+  let pi=0, curChord=prog[0];
+  const sw=()=>{ const t=ctx.currentTime;
+    bedGains.forEach((g,i)=>{ g.gain.cancelScheduledValues(t); g.gain.setTargetAtTime(i===pi?1:.0001,t,1.4); });
+    curChord=prog[pi]; pi=(pi+1)%prog.length; };
+  sw();
+  MUSIC.timers.push(setInterval(sw,8000));
+  const pat=[0,1,2,3,2,1]; let ai=0;
+  MUSIC.timers.push(setInterval(()=>{
+    tone(curChord[pat[ai]]*2,0.9,"sine",.055,delay);
+    ai=(ai+1)%pat.length;
+  },640));
+  MUSIC.timers.push(setInterval(()=>{ tone(2400,0.03,"square",.012,bus); },1280));
+  return {bus,stop:()=>{ stops.forEach(f=>f()); try{bus.disconnect()}catch(e){} }};
+}
+/* ---------- TRACK 4: Red Planet ---------- */
+function buildRed(){
+  const ctx=MUSIC.ctx, bus=newBus(), stops=[];
+  const sub=ctx.createOscillator(); sub.frequency.value=41.2;
+  const subG=ctx.createGain(); subG.gain.value=.13;
+  sub.connect(subG); subG.connect(bus); sub.start(); stops.push(()=>{try{sub.stop()}catch(e){}});
+  const hb=ctx.createOscillator(), hbg=ctx.createGain();
+  hb.frequency.value=.18; hbg.gain.value=.09; hb.connect(hbg); hbg.connect(subG.gain); hb.start(); stops.push(()=>{try{hb.stop()}catch(e){}});
+  [61.74,65.41].forEach(f=>{ const o=ctx.createOscillator(); o.frequency.value=f; const g=ctx.createGain(); g.gain.value=.05; o.connect(g); g.connect(bus); o.start(); stops.push(()=>{try{o.stop()}catch(e){}}); });
+  const len=2*ctx.sampleRate, buf=ctx.createBuffer(1,len,ctx.sampleRate), d=buf.getChannelData(0);
+  let last=0; for(let i=0;i<len;i++){ const w=Math.random()*2-1; last=(last+.02*w)/1.02; d[i]=last*3.5; }
+  const src=ctx.createBufferSource(); src.buffer=buf; src.loop=true;
+  const nf=ctx.createBiquadFilter(); nf.type="lowpass"; nf.frequency.value=320; nf.Q.value=1.2;
+  const ng=ctx.createGain(); ng.gain.value=.5;
+  src.connect(nf); nf.connect(ng); ng.connect(bus); src.start(); stops.push(()=>{try{src.stop()}catch(e){}});
+  const wl=ctx.createOscillator(), wlg=ctx.createGain();
+  wl.frequency.value=.07; wlg.gain.value=180; wl.connect(wlg); wlg.connect(nf.frequency); wl.start(); stops.push(()=>{try{wl.stop()}catch(e){}});
+  const notes=[220,246.94,261.63,311.13,329.63];
+  MUSIC.timers.push(setInterval(()=>{ if(Math.random()<.4) tone(notes[Math.floor(Math.random()*notes.length)],3.5,"sine",.028,bus); },4200));
+  return {bus,stop:()=>{ stops.forEach(f=>f()); try{bus.disconnect()}catch(e){} }};
+}
+/* ---------- UI SOUND EFFECTS ---------- */
+const SFX={
+  click:[[520,.05,0,.045,"sine"]],
+  xp:[[523.25,.1,0,.06,"sine"],[783.99,.18,.07,.06,"sine"]],
+  badge:[[523.25,.12,0,.07,"sine"],[659.25,.12,.09,.07,"sine"],[783.99,.34,.18,.07,"sine"]],
+  levelup:[[392,.12,0,.075,"sine"],[523.25,.12,.1,.075,"sine"],[659.25,.12,.2,.075,"sine"],[1046.5,.55,.3,.075,"sine"]],
+  right:[[880,.3,0,.06,"sine"],[1318.5,.25,.02,.03,"sine"]],
+  wrong:[[196,.35,0,.06,"triangle"],[147,.4,.02,.05,"triangle"]]
+};
+function sfx(name){
+  try{
+    if(S.settings.sfx===false) return;
+    const ctx=audioCtx(); if(!ctx||ctx.state!=="running") return;
+    if(name==="launch"){
+      const t=ctx.currentTime, o=ctx.createOscillator(), g=ctx.createGain(), f=ctx.createBiquadFilter();
+      o.type="sawtooth"; o.frequency.setValueAtTime(70,t); o.frequency.exponentialRampToValueAtTime(360,t+1.1);
+      g.gain.setValueAtTime(.0001,t); g.gain.linearRampToValueAtTime(.05,t+.15); g.gain.exponentialRampToValueAtTime(.0001,t+1.3);
+      f.type="lowpass"; f.frequency.value=900;
+      o.connect(f); f.connect(g); g.connect(MUSIC.sfxGain); o.start(t); o.stop(t+1.4);
+      return;
+    }
+    (SFX[name]||[]).forEach(a=>tone(a[0],a[1],a[4],a[3],MUSIC.sfxGain,a[2]));
+  }catch(e){}
+}
+/* wake audio on first interaction + resume last session's music */
+document.addEventListener("pointerdown",()=>{
+  try{
+    const ctx=audioCtx(); if(!ctx) return;
+    if(ctx.state==="suspended") ctx.resume();
+    if(!MUSIC.autoTried){ MUSIC.autoTried=true;
+      if(S.settings.music&&S.settings.music.playing&&!MUSIC.playing) musicStart(S.settings.music.track);
+    }
+  }catch(e){}
+},{capture:true});
+/* subtle click blip on every button (quiz options get their own sounds) */
+document.addEventListener("click",e=>{
+  try{ const b=e.target&&e.target.closest?e.target.closest("button"):null;
+    if(b&&!b.classList.contains("quiz-opt")) sfx("click");
+  }catch(err){}
+},true);
+/* close music panel on outside click */
+document.addEventListener("click",e=>{
+  try{
+    const p=document.getElementById("musicPanel"), d=document.getElementById("musicDock");
+    if(p&&!p.classList.contains("hidden")&&!p.contains(e.target)&&!(d&&d.contains(e.target))) p.classList.add("hidden");
+  }catch(err){}
+});
+
+/* ============================================================
    BOOT
    ============================================================ */
 (function boot(){
+  if(!S.settings.music) S.settings.music={track:"drift",playing:false,volume:0.6};
+  if(S.settings.sfx===undefined) S.settings.sfx=true;
   if(!S.id){ S.id=uid(); save(false); }
   const _addXP=addXP;
   window.addXP=function(n,why){ _addXP(n,why); if(level()>=5) award("level_5"); if(level()>=10) award("level_10"); };
