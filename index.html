@@ -2474,7 +2474,7 @@ let DUEL=null;
 function duelBegin(){
   const root=document.getElementById("view-root");
   root.innerHTML=`<div class="view" style="max-width:640px">
-  ${viewHead("Friend challenge","Duel Arena","Two explorers. Five questions each. Pass the device — same questions, no timer, pure knowledge.")}
+  ${viewHead("Friend challenge","Duel Arena","Two explorers. Five questions each. Pass the device — different questions for every explorer, no timer, pure knowledge.")}
   <div class="glass panel hud">
     <div class="set-row"><label>Explorer 1</label><input id="duelP1" maxlength="16" placeholder="Player 1" value="${escT(S.name!=="Explorer"?S.name:"")}"></div>
     <div class="set-row"><label>Explorer 2</label><input id="duelP2" maxlength="16" placeholder="Player 2"></div>
@@ -2487,7 +2487,15 @@ function duelStart(){
   const p1=((document.getElementById("duelP1").value||"").trim()||"Explorer 1").slice(0,16);
   const p2=((document.getElementById("duelP2").value||"").trim()||"Explorer 2").slice(0,16);
   const pool=[]; QUIZZES.forEach(q=>q.qs.forEach(item=>pool.push(item)));
-  DUEL={p1,p2,qs:pickQuizBank("duel",pool,5),i:0,s1:0,s2:0,answerer:1};
+  /* different questions for different people: 10 distinct draws — 5 each, zero overlap */
+  const seen=(S.quizSeen&&S.quizSeen.duel)||[];
+  let idx=pool.map((_,x)=>x).filter(x=>!seen.includes(x));
+  if(idx.length<10) idx=pool.map((_,x)=>x);
+  for(let j=idx.length-1;j>0;j--){ const r=Math.floor(Math.random()*(j+1)); [idx[j],idx[r]]=[idx[r],idx[j]]; }
+  const qs1=idx.slice(0,5).map(x=>shuffleQItem(pool[x]));
+  const qs2=idx.slice(5,10).map(x=>shuffleQItem(pool[x]));
+  S.quizSeen=S.quizSeen||{}; S.quizSeen.duel=idx.slice(0,10);
+  DUEL={p1,p2,qs:qs1,qs2,i:0,s1:0,s2:0,answerer:1};
   duelAsk();
 }
 function duelAsk(){
@@ -2497,14 +2505,14 @@ function duelAsk(){
       root.innerHTML=`<div class="view" style="max-width:560px">
       <div class="mars-report" style="border-color:rgba(251,191,36,.45);text-align:center">
         <div class="mr-title">PASS THE DEVICE 🤝</div>
-        <p class="small muted mt10">${escT(DUEL.p1)} scored <b class="acc">${DUEL.s1}/5</b>. No peeking, ${escT(DUEL.p1)}!<br>${escT(DUEL.p2)} — you're up. Same five questions.</p>
+        <p class="small muted mt10">${escT(DUEL.p1)} scored <b class="acc">${DUEL.s1}/5</b>. No peeking, ${escT(DUEL.p1)}!<br>${escT(DUEL.p2)} — you're up. Five fresh questions, drawn just for you.</p>
         <button class="btn btn-primary mt14" onclick="duelAsk()">I'm ${escT(DUEL.p2)} — Start →</button>
       </div></div>`;
       window.scrollTo({top:0,behavior:"smooth"}); return;
     }
     return duelResult();
   }
-  const q=DUEL.qs[DUEL.i]; const who=DUEL.answerer===1?DUEL.p1:DUEL.p2;
+  const qset=DUEL.answerer===1?DUEL.qs:DUEL.qs2; const q=qset[DUEL.i]; const who=DUEL.answerer===1?DUEL.p1:DUEL.p2;
   root.innerHTML=`<div class="view" style="max-width:640px">
   ${viewHead("Duel Arena · Question "+(DUEL.i+1)+" of 5","⚔️ "+escT(who),"Score — "+escT(DUEL.p1)+": "+DUEL.s1+" · "+escT(DUEL.p2)+": "+DUEL.s2)}
   <div class="glass panel hud">
@@ -2515,7 +2523,7 @@ function duelAsk(){
   window.scrollTo({top:0,behavior:"smooth"});
 }
 function duelPick(oi){
-  const q=DUEL.qs[DUEL.i]; const why=document.getElementById("duelWhy");
+  const q=(DUEL.answerer===1?DUEL.qs:DUEL.qs2)[DUEL.i]; const why=document.getElementById("duelWhy");
   if(why.dataset.done) return; why.dataset.done="1";
   const opts=document.querySelectorAll("#view-root .quiz-opt");
   if(opts[oi]) opts[oi].classList.add(oi===q.a?"right":"wrong");
