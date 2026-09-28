@@ -140,6 +140,11 @@ main,header,.topbar{position:relative;z-index:2}
 .pg-back:hover{color:#eaf5ff;border-color:rgba(94,230,255,.65);background:rgba(20,40,80,.62);transform:translateX(-3px);box-shadow:0 0 18px rgba(70,168,255,.25)}
 .pg-back:active{transform:translateX(-1px) scale(.98)}
 @media(max-width:560px){.pg-back-wrap{padding:0 14px}.pg-back{font-size:10px;padding:7px 13px 7px 10px;letter-spacing:.06em}}
+.tb-quick{display:flex;gap:5px;flex:none;align-items:center;padding-right:8px;margin-right:4px;border-right:1px solid rgba(94,230,255,.14)}
+.tb-btn.home-btn{color:#dcebff;background:linear-gradient(135deg,rgba(94,230,255,.16),rgba(70,168,255,.1));border:1px solid rgba(94,230,255,.35);border-radius:11px;padding:7px 13px;cursor:pointer;transition:all .18s}
+.tb-btn.home-btn:hover{color:#fff;border-color:rgba(94,230,255,.75);background:linear-gradient(135deg,rgba(94,230,255,.28),rgba(70,168,255,.18));box-shadow:0 0 16px rgba(70,168,255,.3);transform:translateY(-1px)}
+.tb-btn.home-btn .hm-ico{font-size:13px;line-height:1;display:inline-flex}
+@media(max-width:700px){.tb-quick .tb-btn span:not(.hm-ico){display:none}.tb-btn.home-btn{padding:7px 9px}}
 .tb-right{display:flex;align-items:center;gap:10px;white-space:nowrap}
 .xp-pill{display:flex;flex-direction:column;gap:4px;min-width:150px;padding:6px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(10,18,42,.6)}
 .xp-pill .row1{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.14em;color:var(--mut);text-transform:uppercase}
@@ -855,7 +860,7 @@ function renderTopbar(){
     <svg viewBox="0 0 96 96" fill="none"><circle cx="48" cy="48" r="22" fill="#46a8ff"/><ellipse cx="48" cy="48" rx="42" ry="14" stroke="#5ee6ff" stroke-width="4" transform="rotate(-20 48 48)"/></svg>
     SPACEGENES<span class="plus">+</span>
   </div>
-  <nav class="tb-nav"><button class="tb-btn" id="nav-back" onclick="goBack()" title="Back to previous view" style="${NAV_HIST.length?"":"opacity:.45"}">${ICONS.back}<span>Back</span></button><button class="tb-btn" id="nav-home" onclick="goHome()" title="Home">${ICONS.home}<span>Home</span></button>${NAV.map(n=>`<button class="tb-btn${n.mars?" mars-nav":""}" id="nav-${n.id}" onclick="go('${n.id}')">${ICONS[n.icon]}<span>${n.label}</span></button>`).join("")}</nav>
+  <div class="tb-quick"><button class="tb-btn" id="nav-back" onclick="goBack()" title="Back to previous view" style="${NAV_HIST.length?"":"opacity:.45"}">${ICONS.back}<span>Back</span></button><button class="tb-btn home-btn" id="nav-home" onclick="goHome()" title="🏠 Home — main page"><span class="hm-ico">🏠</span><span>Home</span></button></div><nav class="tb-nav">${NAV.map(n=>`<button class="tb-btn${n.mars?" mars-nav":""}" id="nav-${n.id}" onclick="go('${n.id}')">${ICONS[n.icon]}<span>${n.label}</span></button>`).join("")}</nav>
   <div class="tb-right">
     <div class="xp-pill">
       <div class="row1"><span>LV ${level()} · ${rank()}</span><b>${S.xp} XP</b></div>
