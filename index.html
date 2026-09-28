@@ -103,6 +103,8 @@ main,header,.topbar{position:relative;z-index:2}
 .tb-btn.active{color:#031022;background:linear-gradient(135deg,#5ee6ff,#46a8ff);box-shadow:0 0 16px rgba(70,168,255,.4)}
 .tb-btn.mars-nav{color:#ffb38a}
 .tb-btn.mars-nav.active{background:linear-gradient(135deg,#ff9d6c,#e2582a);color:#2a0d03;box-shadow:0 0 16px rgba(255,125,80,.45)}
+.tb-btn.login-nav{color:#5ee6ff}
+#nav-profile span{max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tb-right{display:flex;align-items:center;gap:10px;white-space:nowrap}
 .xp-pill{display:flex;flex-direction:column;gap:4px;min-width:150px;padding:6px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(10,18,42,.6)}
 .xp-pill .row1{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.14em;color:var(--mut);text-transform:uppercase}
@@ -367,7 +369,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;cur
 
 /* ---------- MARS MISSION ---------- */
 .mars-shell{max-width:880px;margin:0 auto}
-.mars-hud{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.mars-hud{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px;margin-bottom:18px}
 .mh-cell{border:1px solid rgba(255,140,90,.25);border-radius:13px;padding:11px 13px;background:linear-gradient(165deg,rgba(50,22,14,.4),rgba(20,10,20,.5))}
 .mh-cell .k{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:#c98f6f}
 .mh-cell .v{font-size:17px;font-weight:800;color:#ffc9a8;font-variant-numeric:tabular-nums}
@@ -627,6 +629,7 @@ const DEFAULT_STATE = {
   planetsViewed:[], deepViewed:[], interests:[], visited:{},
   streak:1, lastDay:"",
   mars:{runs:0,best:0,lastResult:null},
+  quizSeen:{}, daily:null,
   astraMsgs:[],
   settings:{ model: CONFIG.DEFAULT_MODEL, key:"" },
   cloudAt:0
@@ -659,7 +662,7 @@ function knowledgeScore(){
 }
 function quizAvgPct(){
   const e=Object.entries(S.quizzes); if(!e.length) return 0;
-  let t=0,n=0; for(const [id,best] of e){ const qz=QUIZZES.find(x=>x.id===id); if(qz){ t+=best/qz.qs.length; n++; } }
+  let t=0,n=0; for(const [id,best] of e){ const qz=QUIZZES.find(x=>x.id===id); if(qz){ t+=best/(qz.ask||qz.qs.length); n++; } }
   return n? Math.round(t/n*100):0;
 }
 
@@ -764,6 +767,7 @@ function tickStreak(){
   const yest=new Date(Date.now()-864e5).toISOString().slice(0,10);
   S.streak = S.lastDay===yest ? S.streak+1 : 1;
   S.lastDay=today;
+  if(S.streak>=3) award("streak_3");
   if(S.streak>=7) award("streak_7");
   save();
 }
@@ -784,7 +788,9 @@ const ICONS={
   spark:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 16l.9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9z"/></svg>',
   bolt:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M13 2L4.5 13.5H11L9.5 22 19 10h-6.5z"/></svg>',
   podium:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 21V8h4v13M4 21v-6h4M16 15h4v6M2 21h20"/><path d="M12 2.6l.8 2.3 2.3.8-2.3.8-.8 2.3-.8-2.3-2.3-.8 2.3-.8z"/></svg>',
-  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.2L12 3l9 8.2"/><path d="M5.5 9.8V21h13V9.8"/><path d="M10 21v-5.5h4V21"/></svg>'
+  home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11.2L12 3l9 8.2"/><path d="M5.5 9.8V21h13V9.8"/><path d="M10 21v-5.5h4V21"/></svg>',
+  back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M11 18l-6-6 6-6"/></svg>',
+  user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4.5 21c.8-4 4-6 7.5-6s6.7 2 7.5 6"/></svg>'
 };
 const NAV=[
   {id:"control",  label:"Mission Control", icon:"grid"},
@@ -798,6 +804,7 @@ const NAV=[
   {id:"badges",   label:"Achievements",    icon:"trophy"},
   {id:"leaderboard",label:"Leaderboard",   icon:"podium"},
   {id:"future",   label:"Future Explorer", icon:"compass"},
+  {id:"profile",  label:"Profile",         icon:"user"},
   {id:"mars",     label:"Mars Mission",    icon:"rocket", mars:true}
 ];
 
@@ -814,20 +821,23 @@ function renderTopbar(){
     <svg viewBox="0 0 96 96" fill="none"><circle cx="48" cy="48" r="22" fill="#46a8ff"/><ellipse cx="48" cy="48" rx="42" ry="14" stroke="#5ee6ff" stroke-width="4" transform="rotate(-20 48 48)"/></svg>
     SPACEGENES<span class="plus">+</span>
   </div>
-  <nav class="tb-nav"><button class="tb-btn" id="nav-home" onclick="goHome()" title="Home">${ICONS.home}<span>Home</span></button>${NAV.map(n=>`<button class="tb-btn${n.mars?" mars-nav":""}" id="nav-${n.id}" onclick="go('${n.id}')">${ICONS[n.icon]}<span>${n.label}</span></button>`).join("")}</nav>
+  <nav class="tb-nav"><button class="tb-btn" id="nav-back" onclick="goBack()" title="Back to previous view" style="${NAV_HIST.length?"":"opacity:.45"}">${ICONS.back}<span>Back</span></button><button class="tb-btn" id="nav-home" onclick="goHome()" title="Home">${ICONS.home}<span>Home</span></button>${NAV.map(n=>`<button class="tb-btn${n.mars?" mars-nav":""}" id="nav-${n.id}" onclick="go('${n.id}')">${ICONS[n.icon]}<span>${n.label}</span></button>`).join("")}</nav>
   <div class="tb-right">
     <div class="xp-pill">
       <div class="row1"><span>LV ${level()} · ${rank()}</span><b>${S.xp} XP</b></div>
       <div class="xpbar"><div class="xpbar-fill" style="width:${pct}%"></div></div>
     </div>
+    <button class="tb-btn${(S.name&&S.name!=="Explorer")?"":" login-nav"}" id="nav-profile" onclick="${(S.name&&S.name!=="Explorer")?"go('profile')":"openLogin()"}" title="${(S.name&&S.name!=="Explorer")?"My explorer profile":"Log in / register"}">${ICONS.user}<span>${(S.name&&S.name!=="Explorer")?escT(S.name):"Login"}</span></button>
     <div class="sync-dot off" id="syncDot" title="Cloud sync"></div>
     <button class="gear-btn" onclick="openSettings()" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34h0a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55h0a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87v0a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg></button>
   </div>`;
 }
-let CURRENT_VIEW="";
+let CURRENT_VIEW=""; let NAV_HIST=[]; let BACKING=false;
+function goBack(){ const p=NAV_HIST.pop(); BACKING=true; try{ if(p&&VIEWS[p]) go(p); else goHome(); } finally{ BACKING=false; } }
 function renderIfActive(){ if(CURRENT_VIEW && VIEWS[CURRENT_VIEW]) go(CURRENT_VIEW, null, true); }
 function go(id, param, noScroll){
   if(id==="home") return goHome();
+  if(ACTIVE&&ACTIVE!==id&&!BACKING) NAV_HIST.push(ACTIVE);
   runCleanups();
   if(id==="mars" && MUSIC.playing && MUSIC.track!=="red") musicStart("red");
   CURRENT_VIEW=id; ACTIVE=id;
@@ -838,6 +848,7 @@ function go(id, param, noScroll){
   if(!noScroll) window.scrollTo({top:0,behavior:"smooth"});
 }
 function goHome(){
+  if(CURRENT_VIEW&&!BACKING) NAV_HIST.push(CURRENT_VIEW);
   runCleanups();
   CURRENT_VIEW=""; ACTIVE="";
   document.querySelectorAll(".tb-btn").forEach(b=>b.classList.remove("active"));
@@ -1089,7 +1100,10 @@ const MODULES=[
  quiz:[
   {q:"A light-year measures…",o:["Distance","Time","Brightness","Speed"],a:0,why:"It's the distance light travels in one year (~9.46 trillion km)."},
   {q:"How old is the sunlight reaching Earth?",o:["About 8 minutes","1 second","1 year","24 hours"],a:0,why:"The Sun is ~150M km away — light needs 8 min 20 s."},
-  {q:"Why do infrared telescopes like JWST see through dust?",o:["Infrared wavelengths pass around dust grains","They are closer to stars","Dust reflects visible light only","They use lasers"],a:0,why:"Longer infrared wavelengths slip past dust that blocks visible light."}]},
+  {q:"Why do infrared telescopes like JWST see through dust?",o:["Infrared wavelengths pass around dust grains","They are closer to stars","Dust reflects visible light only","They use lasers"],a:0,why:"Longer infrared wavelengths slip past dust that blocks visible light."},
+ {q:"What is a constellation?",o:["A recognised pattern of stars as seen from Earth","A single giant star","A galaxy","A planet and its moons"],a:0,why:"88 constellations officially map the entire sky."},
+ {q:"Which star has guided navigators for centuries?",o:["Polaris (the North Star)","Sirius","Betelgeuse","Vega"],a:0,why:"Polaris sits almost exactly above Earth's north pole."},
+ {q:"What causes the phases of the Moon?",o:["The changing angle of sunlight as the Moon orbits Earth","Earth's shadow","Clouds on the Moon","The Moon cooling down"],a:0,why:"Half the Moon is always sunlit — we just see different fractions."}]},
 {id:"m2",rank:0,icon:"🪐",t:"The Solar System",d:"Sun, planets, moons, asteroids and the Kuiper Belt.",
  lessons:[
   ["One star, everything else is leftovers","The Sun holds 99.86% of the system's mass. The planets formed from the remaining disc of gas and dust 4.6 billion years ago — rocky worlds inside the 'frost line', giants beyond.","We live in the crumbs of a star's formation."],
@@ -1098,7 +1112,10 @@ const MODULES=[
  quiz:[
   {q:"Which planet is an ice giant?",o:["Neptune","Mars","Jupiter","Mercury"],a:0,why:"Uranus and Neptune are ice giants — gas giants are Jupiter and Saturn."},
   {q:"Where do comets mostly come from?",o:["The Kuiper Belt and Oort Cloud","The asteroid belt","The Sun","Jupiter's rings"],a:0,why:"Icy bodies from the outer zones fall inward when nudged from stable orbits."},
-  {q:"Why are inner planets rocky?",o:["Close to the Sun, heat evaporated ices and light gases","They collided more often","The Sun pulled the rock inward","They are younger"],a:0,why:"Only metals and rock could condense in the hot inner nebula."}]},
+  {q:"Why are inner planets rocky?",o:["Close to the Sun, heat evaporated ices and light gases","They collided more often","The Sun pulled the rock inward","They are younger"],a:0,why:"Only metals and rock could condense in the hot inner nebula."},
+ {q:"Which is the smallest planet in our Solar System?",o:["Mercury","Mars","Venus","Pluto"],a:0,why:"Mercury is barely larger than Earth's Moon."},
+ {q:"Why is Mars red?",o:["Iron oxide (rust) dust covers its surface","Red plants grow there","Constant fires","Its hot core glows through"],a:0,why:"Rusty dust storms paint the whole planet red."},
+ {q:"Which two planets are ice giants?",o:["Uranus and Neptune","Jupiter and Saturn","Mars and Venus","Earth and Mercury"],a:0,why:"Cold, windy worlds of water, ammonia and methane ices."}]},
 {id:"m3",rank:1,icon:"🚀",t:"Rockets & Propulsion",d:"How machines escape gravity: staging, thrust and Tsiolkovsky.",
  lessons:[
   ["Newton's third law flies rockets","A rocket throws mass out the back at high speed; the reaction pushes it forward. Thrust doesn't need air to push against — which is exactly why rockets work in vacuum where propellers fail.","Rockets push themselves by throwing things away."],
@@ -1107,7 +1124,10 @@ const MODULES=[
  quiz:[
   {q:"Rockets work in space because…",o:["They push against their own exhaust (Newton's 3rd law)","There is air to push against","Gravity stops there","They use solar wind"],a:0,why:"Action-reaction needs no external medium."},
   {q:"Why do rockets use stages?",o:["To drop empty tanks and reduce dead weight","To look impressive","Stages are cheaper","To slow down"],a:0,why:"Less mass = more acceleration from remaining engines."},
-  {q:"What speed is needed for low Earth orbit?",o:["About 7.8 km/s sideways","100 km/h straight up","11.2 km/s straight up","Light speed"],a:0,why:"Orbit is mostly horizontal speed — falling around the Earth."}]},
+  {q:"What speed is needed for low Earth orbit?",o:["About 7.8 km/s sideways","100 km/h straight up","11.2 km/s straight up","Light speed"],a:0,why:"Orbit is mostly horizontal speed — falling around the Earth."},
+ {q:"What is thrust?",o:["The pushing force a rocket engine produces","The weight of the fuel","A rocket's paint scheme","A type of fuel"],a:0,why:"Thrust is what fights gravity and accelerates the rocket."},
+ {q:"What does specific impulse (Isp) measure?",o:["Engine efficiency — push per kilogram of propellant","Rocket top speed","Fuel tank size","Engine loudness"],a:0,why:"Ion engines have huge Isp but tiny thrust — great for deep space."},
+ {q:"Which fuel powered the Saturn V first stage?",o:["Kerosene (RP-1) + liquid oxygen","Hydrogen only","Solid rubber","Coal and steam"],a:0,why:"Five F-1 engines burned RP-1/LOx — 34 million newtons of thrust."}]},
 {id:"m4",rank:1,icon:"🛰️",t:"Satellites & Orbits",d:"LEO, GEO, and why falling forever is a career.",
  lessons:[
   ["Orbit is perpetual free-fall","An orbiting satellite is constantly falling toward Earth — but moving sideways so fast it keeps missing. That's Newton's cannonball thought experiment, and every mission controller's day job.","Orbiting = falling with style, at 7.8 km/s."],
@@ -1116,7 +1136,10 @@ const MODULES=[
  quiz:[
   {q:"Why does a satellite stay in orbit?",o:["It falls toward Earth but moves sideways fast enough to keep missing","There's no gravity in space","Its engines fire constantly","Earth's magnetism holds it"],a:0,why:"Orbit is balanced free-fall — gravity bends the path into a circle."},
   {q:"GPS satellites orbit at…",o:["~20,200 km (MEO)","400 km (ISS orbit)","35,786 km (GEO)","The Moon's distance"],a:0,why:"MEO gives coverage and geometry for positioning."},
-  {q:"To catch up with a craft ahead of you, you should…",o:["Slow down to drop into a faster lower orbit","Speed up directly","Fire upward","Wait for solar wind"],a:0,why:"Lower orbits are faster — a counter-intuitive core rule of orbital mechanics."}]},
+  {q:"To catch up with a craft ahead of you, you should…",o:["Slow down to drop into a faster lower orbit","Speed up directly","Fire upward","Wait for solar wind"],a:0,why:"Lower orbits are faster — a counter-intuitive core rule of orbital mechanics."},
+ {q:"What is LEO?",o:["Low Earth Orbit — about 160 to 2,000 km up","A crater on the Moon","A radio frequency band","A launch pad in Florida"],a:0,why:"The ISS and most Earth-observation satellites fly here."},
+ {q:"Why do satellites need station-keeping burns?",o:["To fight drag and drift and hold their assigned orbit","To entertain ground control","To charge their batteries","To cool down"],a:0,why:"Thin air drag and gravity variations slowly shift every orbit."},
+ {q:"Roughly how fast must a satellite travel in LEO?",o:["~7.8 km/s","~1 km/s","~100 m/s","~11.2 km/s"],a:0,why:"Fast enough to keep falling around the Earth instead of into it."}]},
 {id:"m5",rank:1,icon:"🛸",t:"Spacecraft Engineering",d:"Keeping humans and machines alive in a hostile void.",
  lessons:[
   ["The spacecraft is a mini-planet","It must generate power (solar panels or RTGs), dump heat (radiators — no air to cool into), recycle air and water, and survive radiation. Every gram launched costs thousands of dollars.","Spacecraft are ecosystems compressed into metal."],
@@ -1125,7 +1148,10 @@ const MODULES=[
  quiz:[
   {q:"How do spacecraft cool down in vacuum?",o:["Radiators radiate heat as infrared","Fans blow air","They vent water constantly","They don't overheat"],a:0,why:"Without air, radiation is the only way to shed heat."},
   {q:"Why use radiation-hardened electronics?",o:["Cosmic rays can flip memory bits and damage chips","They are faster","They are cheaper","For WiFi in space"],a:0,why:"Single-event upsets from radiation corrupt normal electronics."},
-  {q:"What powers deep-space probes beyond Jupiter?",o:["Radioisotope thermoelectric generators (RTGs)","Extension cords","Wind turbines","Batteries only"],a:0,why:"Sunlight is too weak out there — RTGs turn plutonium heat into electricity."}]},
+  {q:"What powers deep-space probes beyond Jupiter?",o:["Radioisotope thermoelectric generators (RTGs)","Extension cords","Wind turbines","Batteries only"],a:0,why:"Sunlight is too weak out there — RTGs turn plutonium heat into electricity."},
+ {q:"Why are spacecraft tested in thermal-vacuum chambers?",o:["To simulate the heat, cold and vacuum of space","To clean them","To make them lighter","For photos"],a:0,why:"In space there's no air to carry heat — radiation only."},
+ {q:"What is a Whipple shield?",o:["Layered armour that vaporizes micrometeoroids on impact","A sunshade for telescopes","A rocket nozzle design","A solar panel coating"],a:0,why:"Thin spaced layers burst impactors into harmless plasma."},
+ {q:"Why do solar panels struggle at Jupiter's distance?",o:["Sunlight is ~25× weaker out there","Jupiter's gravity bends light","It is too cold for electricity","Panels only work on Mars"],a:0,why:"That's why Juno needed record-breaking huge solar arrays."}]},
 {id:"m6",rank:2,icon:"⭐",t:"Astrophysics: Lives of Stars",d:"Nurseries, fusion, and stellar life cycles.",
  lessons:[
   ["Stars are balanced explosions","Gravity pulls in; fusion pressure pushes out. A star's whole life is this balance. When fuel runs low, the fight ends — and the star's mass decides its fate: white dwarf, neutron star, or black hole.","Mass is destiny for stars."],
@@ -1134,7 +1160,10 @@ const MODULES=[
  quiz:[
   {q:"What keeps a main-sequence star stable?",o:["Balance between gravity and fusion pressure","Solar wind","Its solid crust","Earth's gravity"],a:0,why:"Hydrostatic equilibrium — gravity vs radiation and gas pressure."},
   {q:"The Sun will end its life as…",o:["A white dwarf","A black hole","A supernova","A pulsar"],a:0,why:"The Sun is too small to explode; it sheds layers and fades."},
-  {q:"Where did Earth's gold come from?",o:["Merging neutron stars and supernovae","Earth's core only","The Moon","Solar wind"],a:0,why:"Heavy elements form in extreme cosmic events and seed future worlds."}]},
+  {q:"Where did Earth's gold come from?",o:["Merging neutron stars and supernovae","Earth's core only","The Moon","Solar wind"],a:0,why:"Heavy elements form in extreme cosmic events and seed future worlds."},
+ {q:"Why do massive stars live shorter lives?",o:["They burn through fuel far faster","They are lazy","They have no fuel","They never fuse"],a:0,why:"A 30-solar-mass star may last only a few million years."},
+ {q:"What colour are the hottest stars?",o:["Blue","Red","Yellow","Green"],a:0,why:"Blue burns hottest — red stars are the coolest."},
+ {q:"What is a red giant?",o:["An old, swollen star near the end of its life","A young hot star","A planet glowing red","A red nebula"],a:0,why:"The Sun will swell into one in about 5 billion years."}]},
 {id:"m7",rank:2,icon:"🕳️",t:"Black Holes & Compact Objects",d:"Event horizons, singularities and spacetime bending.",
  lessons:[
   ["Escape velocity becomes destiny","A black hole is mass compressed until escape velocity exceeds light speed. The event horizon is the boundary of no return — not a wall, just a point of no return for information.","The horizon is where 'out' stops existing."],
@@ -1143,7 +1172,10 @@ const MODULES=[
  quiz:[
   {q:"The event horizon is…",o:["The boundary beyond which nothing escapes","A solid surface","The black hole's core","A ring of asteroids"],a:0,why:"It's the radius where escape velocity equals light speed."},
   {q:"How do we 'see' black holes?",o:["By their effects: accretion discs, orbiting stars, gravitational waves","By reflected sunlight","By their heat glow like stars","We can't, at all"],a:0,why:"M87* and Sgr A* images show hot plasma around darkness."},
-  {q:"Gravitational time dilation means…",o:["Clocks tick slower in stronger gravity","Time stops everywhere","Black holes speed up time","Time doesn't exist in space"],a:0,why:"Verified by GPS satellites — gravity bends time measurably."}]},
+  {q:"Gravitational time dilation means…",o:["Clocks tick slower in stronger gravity","Time stops everywhere","Black holes speed up time","Time doesn't exist in space"],a:0,why:"Verified by GPS satellites — gravity bends time measurably."},
+ {q:"What is a white dwarf?",o:["The dense leftover core of a dead Sun-like star","A small hot planet","A bright comet","A newborn star"],a:0,why:"A teaspoon of it would weigh about a tonne."},
+ {q:"What is Sagittarius A*?",o:["The supermassive black hole at the centre of our galaxy","A nearby star","A famous nebula","A spacecraft"],a:0,why:"4 million solar masses — first imaged in 2022."},
+ {q:"What is an accretion disk?",o:["Glowing hot matter spiralling into a black hole","A planet's ring system","A cloud of comets","A galaxy's spiral arm"],a:0,why:"Friction heats infalling gas to millions of degrees."}]},
 {id:"m8",rank:2,icon:"🌍",t:"Exoplanets",d:"Finding and weighing worlds around other stars.",
  lessons:[
   ["Three ways to find a world","Transits: starlight dips as a planet crosses. Radial velocity: the star wobbles from the planet's tug. Direct imaging: photographing the planet in infrared. Together: 5,900+ confirmed exoplanets.","We find invisible worlds by their shadows and whispers."],
@@ -1152,7 +1184,10 @@ const MODULES=[
  quiz:[
   {q:"The transit method detects planets by…",o:["Dips in star brightness as the planet crosses","Hearing their radio signals","Weighing the star directly","Photographing them all"],a:0,why:"Kepler and TESS found thousands this way."},
   {q:"The habitable zone is where…",o:["Liquid water could exist on a surface","Planets are made of gold","Gravity is Earth-like","There is no radiation"],a:0,why:"Right temperature range for surface water — a first filter, not a guarantee."},
-  {q:"TRAPPIST-1 is famous because…",o:["Seven Earth-size planets, three in the habitable zone","It is our closest star","It visited Earth","It has visible rings"],a:0,why:"A compact red dwarf system 40 light-years away."}]},
+  {q:"TRAPPIST-1 is famous because…",o:["Seven Earth-size planets, three in the habitable zone","It is our closest star","It visited Earth","It has visible rings"],a:0,why:"A compact red dwarf system 40 light-years away."},
+ {q:"How many exoplanets have been confirmed so far?",o:["Over 5,000","About 100","Exactly 9","None"],a:0,why:"Most were found by the Kepler and TESS space telescopes."},
+ {q:"What is a 'super-Earth'?",o:["A rocky planet bigger than Earth but smaller than Neptune","A planet made of gold","A very heavy star","Earth's exact twin"],a:0,why:"One of the most common planet types we keep finding."},
+ {q:"Why do astronomers hunt for water vapour in exoplanet atmospheres?",o:["Liquid water is essential to life as we know it","It makes planets prettier","It cools our telescopes","It proves aliens exist"],a:0,why:"JWST has detected steam in the air of several worlds."}]},
 {id:"m9",rank:3,icon:"🌌",t:"Cosmology & the Big Bang",d:"13.8 billion years in three lessons.",
  lessons:[
   ["Expansion, not explosion","The Big Bang wasn't a bomb in space — it was (and is) space itself stretching everywhere at once. Galaxies aren't flying from a centre; the distance between all things grows. Hubble's law: farther = faster.","The universe has no edge and no centre — every point sees the same expansion."],
@@ -1161,7 +1196,10 @@ const MODULES=[
  quiz:[
   {q:"The Big Bang was…",o:["Space itself expanding everywhere","An explosion at one point in space","A collision of two galaxies","The formation of the Sun"],a:0,why:"Expansion happens everywhere — there's no central blast site."},
   {q:"The CMB is…",o:["Light released 380,000 years after the Big Bang","Light from the first stars","Radiation from black holes","Sunlight reflected by dust"],a:0,why:"It's the oldest light in the universe — a cosmic baby photo."},
-  {q:"Dark energy…",o:["Accelerates the expansion of the universe","Pulls galaxies together","Is just dark matter","Is black holes' glow"],a:0,why:"Discovered via distant supernovae in 1998; still mysterious."}]},
+  {q:"Dark energy…",o:["Accelerates the expansion of the universe","Pulls galaxies together","Is just dark matter","Is black holes' glow"],a:0,why:"Discovered via distant supernovae in 1998; still mysterious."},
+ {q:"What is the universe mostly made of?",o:["Dark energy and dark matter (~95%)","Stars and planets","Ordinary atoms","Empty nothing"],a:0,why:"Only about 5% of the universe is ordinary matter."},
+ {q:"What is redshift?",o:["Light stretched to redder wavelengths as objects recede","Stars turning red","A telescope filter","The Sun setting on Mars"],a:0,why:"Hubble used it to prove the universe is expanding."},
+ {q:"What is the observable universe?",o:["Everything we can possibly detect — ~93 billion light-years wide","The Milky Way alone","The Solar System","The nearest 100 stars"],a:0,why:"Light from beyond it hasn't had time to reach us in 13.8 billion years."}]},
 {id:"m10",rank:3,icon:"🏗️",t:"Space Habitats & Engineering",d:"Building homes off Earth: stations, bases and ISRU.",
  lessons:[
   ["The ISS: our orbiting outpost","420 tonnes assembled in orbit over 40+ missions. It recycles ~90% of its water, and its solar array wings would cover a stadium. 25+ years of continuous human presence — proof that we can live in space.","Every day aboard the ISS is a rehearsal for Mars."],
@@ -1170,7 +1208,10 @@ const MODULES=[
  quiz:[
   {q:"ISRU means…",o:["Using local resources like ice and CO₂ on site","Building rockets on Earth only","Importing everything from Earth","A type of orbit"],a:0,why:"In-Situ Resource Utilization — live off the land."},
   {q:"MOXIE on Perseverance demonstrated…",o:["Making oxygen from Martian CO₂","Making water from rocks","Growing potatoes","3D printing habitats"],a:0,why:"A first step to fuel and air production on Mars."},
-  {q:"Why is radiation a major Mars-mission challenge?",o:["Beyond Earth's magnetic shield, cosmic rays damage DNA","It melts spacesuits","It causes explosions","It blocks sunlight completely"],a:0,why:"Shielding and fast transits are key mission-design solutions."}]},
+  {q:"Why is radiation a major Mars-mission challenge?",o:["Beyond Earth's magnetic shield, cosmic rays damage DNA","It melts spacesuits","It causes explosions","It blocks sunlight completely"],a:0,why:"Shielding and fast transits are key mission-design solutions."},
+ {q:"Why is Martian soil (regolith) hard for farming?",o:["It contains toxic perchlorates","It is far too wet","It is radioactive only","It is too nutritious"],a:0,why:"Washing or heating soil can remove the perchlorates."},
+ {q:"Why build Mars habitats underground or covered in regolith?",o:["Soil shields crews from radiation","To hide from dust storms","To stay warm at night","For radio silence"],a:0,why:"Mars has no magnetic field — the ground is the shield."},
+ {q:"What is a pressurised rover good for?",o:["Exploring far from base in shirt-sleeve comfort","Flying to orbit","Landing on Earth","Cooling rocket fuel"],a:0,why:"A camper van for Mars — crews can range for days."}]},
 {id:"m11",rank:4,icon:"🧠",t:"Future Space Technology",d:"Ion drives, space elevators and interstellar dreams.",
  lessons:[
   ["Propulsion beyond fire","Ion engines accelerate xenon with electric fields — thrust like a paper's weight, but running for years, sipping fuel 10× more efficiently than chemical rockets. Nuclear thermal and solar sails (LightSail 2 flew!) open the solar system further.","The future of propulsion is patience and physics, not explosions."],
@@ -1179,14 +1220,17 @@ const MODULES=[
  quiz:[
   {q:"Ion engines are efficient because…",o:["They accelerate fuel electrically over long durations","They are the most powerful","They need no fuel","They use antimatter"],a:0,why:"Low thrust, extreme efficiency — perfect for deep space."},
   {q:"NASA's DART mission proved…",o:["We can deliberately change an asteroid's orbit","Asteroids are harmless","We can mine gold there","Comets have engines"],a:0,why:"Humanity's first planetary-defense test succeeded in 2022."},
-  {q:"Light sails work by…",o:["Photons from light pushing a thin reflective sail","Solar wind turbines","Magnetic fields from Earth","Rocket exhaust"],a:0,why:"Light carries momentum — Japan's IKAROS and LightSail 2 flew on it."}]}
+  {q:"Light sails work by…",o:["Photons from light pushing a thin reflective sail","Solar wind turbines","Magnetic fields from Earth","Rocket exhaust"],a:0,why:"Light carries momentum — Japan's IKAROS and LightSail 2 flew on it."},
+ {q:"What could a space elevator do?",o:["Lift cargo to orbit cheaply along a super-strong tether","Travel between stars","Land on the Sun","Teleport people"],a:0,why:"No material is strong enough yet — carbon nanotubes might be."},
+ {q:"What is terraforming?",o:["Redesigning a planet's environment to become Earth-like","Building telescopes","Naming new planets","Growing crops in orbit"],a:0,why:"A far-future idea for Mars — needing huge energy and time."},
+ {q:"What is a Dyson swarm?",o:["A cloud of solar collectors surrounding a star","A type of rocket engine","An alien probe","A telescope array"],a:0,why:"A megastructure concept to harvest a star's full energy output."}]}
 ];
 
 /* ============================================================
    CHALLENGE QUIZZES
    ============================================================ */
 const QUIZZES=[
-{id:"q1",icon:"🧭",t:"Space Basics",d:"Foundations every explorer needs.",xp:60,
+{id:"q1",icon:"🧭",t:"Space Basics",d:"Foundations every explorer needs.",xp:60,ask:8,
  qs:[{q:"Which planet is closest to the Sun?",o:["Mercury","Venus","Mars","Earth"],a:0,why:"Mercury orbits at 0.39 AU."},
  {q:"What force keeps planets in orbit?",o:["Gravity","Magnetism","Friction","Air resistance"],a:0,why:"Gravity bends their paths into closed orbits."},
  {q:"What is at the centre of our Solar System?",o:["The Sun","Earth","A black hole","Jupiter"],a:0,why:"The Sun holds 99.86% of the system's mass."},
@@ -1194,8 +1238,14 @@ const QUIZZES=[
  {q:"How many planets are in our Solar System?",o:["8","9","7","12"],a:0,why:"Eight — Pluto was reclassified as a dwarf planet in 2006."},
  {q:"What is a moon?",o:["A natural satellite orbiting a planet","A small star","A type of comet","A cloud in space"],a:0,why:"Earth has 1; Saturn has 146 known moons."},
  {q:"Which is the largest planet?",o:["Jupiter","Saturn","Neptune","Earth"],a:0,why:"Over 1,300 Earths fit inside Jupiter."},
- {q:"What causes day and night?",o:["Earth's rotation","Earth's orbit around the Sun","Clouds","The Moon's shadow"],a:0,why:"Earth spins once every ~24 hours."}]},
-{id:"q2",icon:"🪐",t:"Solar System Master",d:"Know your planetary neighbourhood.",xp:80,
+ {q:"What causes day and night?",o:["Earth's rotation","Earth's orbit around the Sun","Clouds","The Moon's shadow"],a:0,why:"Earth spins once every ~24 hours."},
+ {q:"Why does the Moon shine?",o:["It reflects sunlight","It makes its own light","It burns gas","Earth's magnetic field lights it"],a:0,why:"The Moon is a mirror — it has no light of its own."},
+ {q:"What is the Sun mainly made of?",o:["Hydrogen and helium gas","Rock and iron","Liquid fire","Water vapour"],a:0,why:"~74% hydrogen, ~24% helium — a giant ball of plasma."},
+ {q:"Which planet currently has the most confirmed moons?",o:["Saturn","Earth","Mercury","Mars"],a:0,why:"Saturn's 146+ moons put it ahead of Jupiter's 95."},
+ {q:"What do we call the streak of light when space rock burns in our atmosphere?",o:["A meteor (shooting star)","A comet","A moon","A nebula"],a:0,why:"The rock itself is a meteoroid; if it lands, it's a meteorite."},
+ {q:"About how old is our Solar System?",o:["~4.6 billion years","~6,000 years","~13.8 billion years","~1 million years"],a:0,why:"Built from a collapsing cloud of gas and dust 4.6 billion years ago."},
+ {q:"Why do we always see the same side of the Moon?",o:["Tidal locking — its rotation matches its orbit","The far side is dark","It doesn't rotate at all","Earth's shadow hides it"],a:0,why:"The Moon spins once per orbit — synchronous rotation."}]},
+{id:"q2",icon:"🪐",t:"Solar System Master",d:"Know your planetary neighbourhood.",xp:80,ask:8,
  qs:[{q:"Which planet spins on its side?",o:["Uranus","Neptune","Mars","Saturn"],a:0,why:"Its ~98° tilt likely came from a giant impact."},
  {q:"What are Saturn's rings made of?",o:["Water ice","Solid metal","Plasma","Sand from Mars"],a:0,why:"Billions of ice chunks, some house-sized, some like dust."},
  {q:"Which planet has the fastest winds?",o:["Neptune","Jupiter","Earth","Venus"],a:0,why:"Neptune's winds hit 2,100 km/h."},
@@ -1203,8 +1253,14 @@ const QUIZZES=[
  {q:"Which planet is hottest?",o:["Venus","Mercury","Jupiter","Mars"],a:0,why:"A runaway greenhouse keeps Venus at 464°C."},
  {q:"What lies between Mars and Jupiter?",o:["The asteroid belt","The Kuiper Belt","A black hole","Saturn"],a:0,why:"Millions of rocky bodies — leftover planet-building material."},
  {q:"Which moon has a methane weather cycle?",o:["Titan","Europa","Phobos","Io"],a:0,why:"Titan has rivers and lakes of liquid methane."},
- {q:"What is the Kuiper Belt?",o:["A ring of icy worlds beyond Neptune","Asteroids near the Sun","Jupiter's radiation belt","A comet's tail"],a:0,why:"Home to Pluto, Eris and countless icy bodies."}]},
-{id:"q3",icon:"🌌",t:"Deep Space",d:"Black holes, stars and the universe.",xp:100,
+ {q:"What is the Kuiper Belt?",o:["A ring of icy worlds beyond Neptune","Asteroids near the Sun","Jupiter's radiation belt","A comet's tail"],a:0,why:"Home to Pluto, Eris and countless icy bodies."},
+ {q:"Which planet has the strongest magnetic field?",o:["Jupiter","Earth","Mercury","Neptune"],a:0,why:"Jupiter's field is ~20,000× stronger than Earth's."},
+ {q:"Which planet spins 'backwards' (retrograde) compared to most?",o:["Venus","Earth","Mars","Jupiter"],a:0,why:"On Venus the Sun rises in the west."},
+ {q:"Where is the heliopause?",o:["The boundary where the Sun's solar wind meets interstellar space","The edge of the Milky Way","Just above Earth's atmosphere","Saturn's orbit"],a:0,why:"Voyager 1 crossed it in 2012 — entering interstellar space."},
+ {q:"Which planet has the shortest day?",o:["Jupiter (~9.9 hours)","Earth","Venus","Mercury"],a:0,why:"Despite its huge size, Jupiter spins fastest."},
+ {q:"What are Jupiter's four Galilean moons?",o:["Io, Europa, Ganymede, Callisto","Titan, Enceladus, Mimas, Iapetus","Phobos, Deimos, Io, Titan","Luna, Europa, Titan, Triton"],a:0,why:"Spotted by Galileo in 1610 — the first moons seen beyond Earth."},
+ {q:"Why does Mercury have almost no atmosphere?",o:["Its weak gravity and solar wind stripped it away","It never had any gas","It's too cold","Its magnetic field blocks air"],a:0,why:"Light gases escape Mercury's weak grip; the Sun blows the rest away."}]},
+{id:"q3",icon:"🌌",t:"Deep Space",d:"Black holes, stars and the universe.",xp:100,ask:8,
  qs:[{q:"What happens at a black hole's event horizon?",o:["Nothing can escape, not even light","Everything burns","Time stops entirely","Gravity disappears"],a:0,why:"It's the radius where escape velocity exceeds light speed."},
  {q:"How do stars produce energy?",o:["Nuclear fusion in their cores","Burning coal","Chemical reactions","Friction from spinning"],a:0,why:"Hydrogen fuses into helium, releasing energy."},
  {q:"What is a light-year?",o:["The distance light travels in a year","The time light takes to reach Earth","A year on Mars","A unit of brightness"],a:0,why:"About 9.46 trillion kilometres."},
@@ -1212,8 +1268,14 @@ const QUIZZES=[
  {q:"What is dark matter?",o:["Invisible mass detected only by its gravity","Black paint on stars","Antimatter","A type of nebula"],a:0,why:"It makes up ~27% of the universe."},
  {q:"The Big Bang occurred about…",o:["13.8 billion years ago","4.5 billion years ago","1 million years ago","6000 years ago"],a:0,why:"Measured via the CMB and expansion rate."},
  {q:"What's a neutron star's density like?",o:["A sugar cube weighs ~1 billion tonnes","Like water","Like iron","Like air"],a:0,why:"It's the densest observable matter."},
- {q:"What did LIGO first detect in 2015?",o:["Gravitational waves from merging black holes","Signals from aliens","A new planet","Dark matter particles"],a:0,why:"A century after Einstein's prediction."}]},
-{id:"q4",icon:"🚀",t:"Rockets & Missions",d:"Engineering and exploration history.",xp:100,
+ {q:"What did LIGO first detect in 2015?",o:["Gravitational waves from merging black holes","Signals from aliens","A new planet","Dark matter particles"],a:0,why:"A century after Einstein's prediction."},
+ {q:"What is a supernova?",o:["A violent explosion of a dying massive star","A new planet forming","A comet hitting the Sun","A cloud of space dust"],a:0,why:"For a few weeks it can outshine an entire galaxy."},
+ {q:"What is a nebula?",o:["A giant cloud of gas and dust in space","A cluster of black holes","A type of star","A ring around a planet"],a:0,why:"Nebulae are stellar nurseries where new stars are born."},
+ {q:"Which star is closest to our Sun?",o:["Proxima Centauri","Sirius","Polaris","Betelgeuse"],a:0,why:"Just 4.24 light-years away — it has at least one known planet."},
+ {q:"What is a galaxy?",o:["A vast system of stars, gas, dust and dark matter bound by gravity","A single very large star","A cloud around a planet","A group of comets"],a:0,why:"Our Milky Way holds 100–400 billion stars."},
+ {q:"What is a pulsar?",o:["A rapidly spinning neutron star sweeping beams of light like a lighthouse","A planet that pulses","A pulsing black hole","A dying comet"],a:0,why:"Discovered by Jocelyn Bell Burnell in 1967."},
+ {q:"When the Milky Way and Andromeda collide, most stars will…",o:["Almost never actually hit each other","Crash into one another","All explode","Be flung into deep space"],a:0,why:"Stars are so far apart that the galaxies will merge peacefully."}]},
+{id:"q4",icon:"🚀",t:"Rockets & Missions",d:"Engineering and exploration history.",xp:100,ask:8,
  qs:[{q:"Rockets move by…",o:["Expelling mass at high speed (Newton's 3rd law)","Pushing against air","Magnetic levitation","Solar wind pressure"],a:0,why:"Action-reaction works in vacuum."},
  {q:"Why do rockets have stages?",o:["To shed empty tanks and get lighter","For decoration","To carry passengers","To slow down"],a:0,why:"Less mass means more acceleration."},
  {q:"What speed is roughly needed to escape Earth entirely?",o:["11.2 km/s","1.2 km/s","100 km/s","7.8 km/s"],a:0,why:"Escape velocity from Earth's surface."},
@@ -1221,8 +1283,14 @@ const QUIZZES=[
  {q:"Ingenuity made history by…",o:["Flying on Mars — the first powered flight elsewhere","Landing on Titan","Reaching interstellar space","Mining an asteroid"],a:0,why:"72 flights on the Red Planet."},
  {q:"What powers the James Webb Space Telescope?",o:["A 6.5-m infrared mirror at Lagrange point 2","Radio waves from Earth","Nuclear reactors","A laser"],a:0,why:"It observes the universe in infrared from 1.5M km away."},
  {q:"The ISS orbits Earth every…",o:["~90 minutes","24 hours","1 week","1 hour"],a:0,why:"Crew see 16 sunrises a day."},
- {q:"Voyager 1 is now…",o:["In interstellar space","On Mars","Orbiting Jupiter","Back on Earth"],a:0,why:"It crossed the heliopause in 2012."}]},
-{id:"q5",icon:"🏆",t:"Grand Challenge",d:"The final exam across everything. 12 questions.",xp:200,
+ {q:"Voyager 1 is now…",o:["In interstellar space","On Mars","Orbiting Jupiter","Back on Earth"],a:0,why:"It crossed the heliopause in 2012."},
+ {q:"Who was the first person to walk on the Moon?",o:["Neil Armstrong","Buzz Aldrin","Yuri Gagarin","Michael Collins"],a:0,why:"Apollo 11 — July 20, 1969."},
+ {q:"What does ISRO's Gaganyaan programme aim to do?",o:["Send Indian astronauts to space","Land on the Sun","Mine asteroids","Build a Mars colony"],a:0,why:"India's first crewed spaceflight, launching on the LVM3 rocket."},
+ {q:"What is a launch window?",o:["The best time to launch so the spacecraft meets its target","The hatch of a rocket","A glass panel on a spacecraft","Rocket maintenance week"],a:0,why:"Planetary alignment dictates when missions can fly."},
+ {q:"Why do spacecraft need heat shields?",o:["To survive the intense heat of atmospheric entry","To keep warm in space","For streamlining","To generate electricity"],a:0,why:"Re-entry compresses air to thousands of degrees."},
+ {q:"What was Sputnik 1?",o:["The first artificial satellite, launched in 1957","A US Moon rocket","A Mars rover","A space station"],a:0,why:"The Soviet satellite that started the Space Age."},
+ {q:"What is a spacewalk (EVA) for?",o:["Repairing and assembling spacecraft outside","Sightseeing","Exercise only","Escaping the ship"],a:0,why:"Astronauts built the ISS and fixed Hubble on EVAs."}]},
+{id:"q5",icon:"🏆",t:"Grand Challenge",d:"The final exam across everything — 12 questions drawn fresh each run.",xp:200,ask:12,
  qs:[{q:"Which is the correct order from the Sun?",o:["Mercury, Venus, Earth, Mars","Venus, Mercury, Earth, Mars","Earth, Mars, Venus, Mercury","Mars, Earth, Venus, Mercury"],a:0,why:"MVEMJSUN — a classic memory ladder."},
  {q:"Why is Venus hotter than Mercury?",o:["CO₂ greenhouse effect","It's closer to the Sun","Its iron core","Its volcanoes"],a:0,why:"Thick atmosphere traps heat at 464°C."},
  {q:"What is the main fuel of the Sun?",o:["Hydrogen","Coal","Uranium","Oxygen"],a:0,why:"Fusing hydrogen into helium in the core."},
@@ -1234,7 +1302,15 @@ const QUIZZES=[
  {q:"Transit method finds exoplanets via…",o:["Star brightness dips","Gravitational waves","Radio signals","Laser ranging"],a:0,why:"Kepler/TESS discovered thousands."},
  {q:"Dark energy causes…",o:["Accelerating cosmic expansion","Galaxy formation","Black hole spin","Star fusion"],a:0,why:"Discovered from dimming distant supernovae in 1998."},
  {q:"Escape velocity from Earth's surface is about…",o:["11.2 km/s","7.8 km/s","3 km/s","300 km/s"],a:0,why:"Enough kinetic energy to leave Earth's gravity well."},
- {q:"The CMB is evidence of…",o:["The hot early universe","Alien broadcasts","The asteroid belt","Jupiter's field"],a:0,why:"The 380,000-year-old afterglow of the Big Bang."}]}
+ {q:"The CMB is evidence of…",o:["The hot early universe","Alien broadcasts","The asteroid belt","Jupiter's field"],a:0,why:"The 380,000-year-old afterglow of the Big Bang."},
+ {q:"Which Indian rocket launched Chandrayaan-3?",o:["LVM3 (GSLV Mk III)","Falcon 9","Ariane 5","Soyuz"],a:0,why:"ISRO's heaviest lifter sent Chandrayaan-3 to the Moon in 2023."},
+ {q:"How hot is the Sun's core?",o:["~15 million °C","~5,500 °C","~100,000 °C","~1 billion °C"],a:0,why:"Core fusion runs at about 15 million Kelvin."},
+ {q:"What is a Lagrange point?",o:["A gravity-balanced parking spot in space","The edge of a black hole","A planet's core","The tip of a rocket"],a:0,why:"JWST observes from Sun–Earth L2, 1.5 million km away."},
+ {q:"Which planet has a day longer than its year?",o:["Venus","Mercury","Jupiter","Mars"],a:0,why:"Venus rotates in 243 Earth days but orbits the Sun in 225."},
+ {q:"What is NASA's Artemis programme returning to?",o:["The Moon — with humans","Mars","Venus","The Sun"],a:0,why:"Artemis aims to land astronauts near the lunar south pole."},
+ {q:"What is the Goldilocks (habitable) zone?",o:["The orbital band where liquid water can exist","Where gold forms in stars","Jupiter's ring gap","The Sun's core"],a:0,why:"Not too hot, not too cold — the first place we look for life."},
+ {q:"What are light sails pushed by?",o:["Light pressure from photons or lasers","Rocket fuel","Solar wind turbines","Gravity ropes"],a:0,why:"IKAROS and LightSail 2 proved photon propulsion works."},
+ {q:"What is the asteroid belt mostly made of?",o:["Rocky and metallic remnants that never formed a planet","Old spacecraft","Gas clouds","Liquid water"],a:0,why:"Jupiter's gravity kept a fifth rocky planet from forming there."}]}
 ];
 
 /* ============================================================
@@ -1244,6 +1320,7 @@ const BADGES=[
 {id:"first_steps",icon:"🌟",name:"First Steps",d:"Complete your first academy module.",xp:30},
 {id:"orbit_master",icon:"🪐",name:"Orbit Master",d:"Complete Mission 01 — Solar System.",xp:50},
 {id:"mars_pioneer",icon:"🔴",name:"Mars Pioneer",d:"Complete Mission 02 — Mars.",xp:50},
+{id:"mars_explorer",icon:"🏅",name:"Mars Explorer",d:"Command a full Mars expedition — crew, oxygen, food, landing — and bring everyone home.",xp:80},
 {id:"event_horizon",icon:"🕳️",name:"Event Horizon",d:"Complete Mission 03 — Black Hole.",xp:50},
 {id:"rocket_scientist",icon:"🚀",name:"Rocket Scientist",d:"Complete Mission 04 — Build a Rocket.",xp:50},
 {id:"quiz_ace",icon:"⚡",name:"Quiz Ace",d:"Finish your first challenge quiz.",xp:30},
@@ -1252,6 +1329,7 @@ const BADGES=[
 {id:"deep_diver",icon:"🌌",name:"Deep Diver",d:"Open every deep space object.",xp:40},
 {id:"level_5",icon:"🛰️",name:"Level 5 Explorer",d:"Reach Level 5.",xp:0},
 {id:"level_10",icon:"👨‍🚀",name:"Level 10 Mission Specialist",d:"Reach Level 10.",xp:0},
+{id:"streak_3",icon:"🔥",name:"Hat-Trick Streak",d:"Learn 3 days in a row.",xp:30},
 {id:"streak_7",icon:"🔥",name:"Week of Wonder",d:"Learn 7 days in a row.",xp:60},
 {id:"academy_honors",icon:"🎓",name:"Academy Honors",d:"Complete all 11 academy modules.",xp:200},
 {id:"mission_commander",icon:"🎖️",name:"Mission Commander",d:"Complete all 4 training missions.",xp:150},
@@ -1318,6 +1396,12 @@ const MARS_EVENTS=[
 {id:"fatigue",title:"😴 Crew Fatigue Warning",p:"Biometrics show the crew is running tired — the 6-month mark of confinement. Morale dipping. Mars arrival burn is in 20 days.",
  opts:[{t:"Declare a rest week — light duties, full sleep, movie night",d:"Crew performance rebounds sharply. A small drift costs a touch of fuel, but the team is sharp for arrival.",fuel:-4,hull:0,sci:+6,pts:20,k:"Human factors — sleep, morale, team dynamics — are mission-critical systems, not luxuries."},
  {t:"Maintain the training schedule for arrival",d:"Skills stay sharp, but exhaustion raises error risk — a small slip damages a science instrument.",fuel:0,hull:-6,sci:-6,pts:-10,k:"ISS crews keep strict sleep schedules — fatigue in space has caused real mission incidents."}]},
+{id:"o2leak",title:"🫁 Oxygen Regenerator Failure",p:"A compressor in the oxygen regenerator has seized. O₂ reserves are bleeding away — the crew's margin is shrinking by the hour.",
+ opts:[{t:"Swap in the spare compressor from stores",d:"The spare fits perfectly. Oxygen restored — it costs power and a short EVA to install.",fuel:-5,hull:0,sci:0,o2:25,pts:20,k:"Real spacecraft carry orbital replacement units (ORUs) — the ISS literally shelves spare parts in vacuum."},
+ {t:"Run the regenerator at reduced capacity",d:"You save the fuel, but the crew lives on thin oxygen for weeks — performance and morale suffer.",fuel:0,hull:0,sci:-6,o2:8,pts:-10,k:"Apollo 13's crew survived on dwindling CO₂ scrubbers — margins are life."}]},
+{id:"food",title:"🍽 Food Stores Contamination",p:"Mould has spread through a food container block in the wet workshop. The nutrition plan for the final months is at risk.",
+ opts:[{t:"Quarantine the block and stretch remaining rations",d:"Careful rationing plus vitamin supplements keeps everyone fed — morale dips slightly.",fuel:0,hull:0,sci:0,o2:-4,pts:15,k:"Food safety on long missions is engineered carefully — packaging, radiation and mould are all studied."},
+ {t:"Burn fuel to sterilise the contaminated block",d:"Fuel spent on heating leaves less margin for arrival — but the crew eats full meals.",fuel:-10,hull:0,sci:0,o2:0,pts:-5,k:"Every kilogram of fuel is a trade against every other resource — mass is destiny in spaceflight."}]},
 {id:"dust",title:"🌪 Martian Dust Storm",p:"Approach imagery shows a regional dust storm directly over your prime landing site. Storms can last weeks.",
  opts:[{t:"Wait in orbit for the storm to clear",d:"You burn fuel to hold orbit, but land in clear skies with all systems green.",fuel:-14,hull:0,sci:0,pts:20,k:"In 2018 a global dust storm ended Opportunity's 15-year mission — Mars weather is mission-defining."},
  {t:"Land through the storm with terrain radar",d:"You make it down — but dust coats the solar arrays and abrades the hull. Science operations degraded.",fuel:0,hull:-12,sci:-10,pts:-15,k:"Dust is the enemy of Mars solar power — which is why Perseverance uses nuclear (RTG) power."}]}
@@ -1326,6 +1410,19 @@ const MARS_EDL=[
 {id:"aero",name:"Aggressive Aerocapture",d:"Dive deep into the atmosphere and let drag do the braking — saves fuel, white-knuckle ride.",fuel:+10,hull:-15,pts:15,risk:1.15,k:"Aerobraking is real — used by Mars Reconnaissance Orbiter — trading fuel for heat-shield risk."},
 {id:"orbit",name:"Orbit-First, Then Land",d:"Burn into a stable parking orbit, survey, then descend. Costs fuel, maximum safety.",fuel:-14,hull:0,pts:25,risk:0.7,k:"Apollo 11 orbited first — inspection before commitment is classic mission design."},
 {id:"direct",name:"Direct Entry",d:"Skip orbit entirely — slam straight into the atmosphere at interplanetary speed.",fuel:+4,hull:-20,pts:5,risk:1.3,k:"All successful Mars landers so far have used direct entry — but only with years of engineering behind the heat shield."}
+];
+const MARS_CREW=[
+{id:"varga",icon:"🧑‍✈️",name:"Cmdr. Varga",role:"Veteran Commander",skill:"command",d:"20 years of flight command. Steady hands, steady nerves — her experience adds bonus decision points in every crisis."},
+{id:"rohit",icon:"👨‍🔧",name:"Chief Rohit",role:"Systems Engineer",skill:"engineer",d:"Can fix anything with a wrench and a prayer. Cuts hull damage from events and landing by 35%."},
+{id:"meera",icon:"👩‍⚕️",name:"Dr. Meera",role:"Flight Surgeon",skill:"medic",d:"Keeps the crew healthy through fatigue and radiation. Halves the penalty of bad outcomes."},
+{id:"ilias",icon:"👨‍🔬",name:"Dr. Ilias",role:"Planetary Scientist",skill:"scientist",d:"Mars-obsessed geologist. Boosts ALL science yield by 25%."},
+{id:"junko",icon:"👩‍✈️",name:"Capt. Junko",role:"Ace Pilot",skill:"pilot",d:"Test pilot with 40 orbital flights. Cuts fuel losses on corrections and maneuvers by 25%."},
+{id:"oma",icon:"🧑‍🌾",name:"Oma",role:"Life-Support Tech",skill:"life",d:"Botanist and life-support wizard — boosts starting O₂ and softens oxygen losses by 40%."}
+];
+const MARS_SUPPLIES=[
+{id:"scrubbers",icon:"🧪",name:"Advanced CO₂ Scrubbers + Water Recycling",d:"Closed-loop life support: near-total oxygen and water recycling. Light and proven — but no fresh food.",fuel:0,hull:0,sci:0,o2:95,pts:15,food:"Rehydrated ration packs",k:"The ISS recycles ~93% of its water — closed loops are the future of deep-space life support."},
+{id:"green",icon:"🌱",name:"Greenhouse Module",d:"Grow fresh food and breathe plant-made oxygen. Heavy and power-hungry — but crews arrive healthier and science-rich.",fuel:-8,hull:-2,sci:120,o2:85,pts:20,food:"Fresh greens + rations",k:"NASA's Veggie experiment turns CO₂ into O₂ and food — psychology included, free."},
+{id:"tanks",icon:"🛢️",name:"Redundant O₂ Tanks + Frozen Meals",d:"Carry spare oxygen tanks and pre-packed meals. Massive safety margin, at a heavy fuel cost.",fuel:-12,hull:4,sci:0,o2:100,pts:10,food:"Frozen pre-packed meals",k:"Redundancy — two of everything critical — is the golden rule of crewed spaceflight."}
 ];
 const MARS_SCI=[
 {id:"drill",name:"Ice Drill",d:"Core down 2 m to reach subsurface water ice — the key to future human bases.",power:3,sci:120,k:"Subsurface ice = drinking water, oxygen and rocket fuel. The most valuable resource on Mars."},
@@ -1734,7 +1831,7 @@ VIEWS.academy={render(root){
 }};
 function openModule(id){
   const m=MODULES.find(x=>x.id===id); if(!m) return;
-  MOD_SHUF[id]=m.quiz.map(shuffleQItem);
+  MOD_SHUF[id]=pickQuizBank(id, m.quiz, Math.min(3, m.quiz.length));
   const st=S.modules[id]||{done:false,answers:[]};
   const root=document.getElementById("view-root");
   root.innerHTML=`<div class="view" style="max-width:820px">
@@ -1761,7 +1858,7 @@ function modPick(qi,oi,id){
   document.getElementById(`mq-${qi}-${oi}`).classList.add(oi===q.a?"right":"wrong");
   why.innerHTML=`<div class="q-why">${oi===q.a?"✓":"✗"} ${q.why}</div>`;
   MOD_RUN[id]=MOD_RUN[id]||{n:0,done:0}; MOD_RUN[id].done++; if(oi===q.a){ MOD_RUN[id].n++; sfx("right"); } else sfx("wrong");
-  if(MOD_RUN[id].done===m.quiz.length){
+  if(MOD_RUN[id].done===(MOD_SHUF[id]||m.quiz).length){
     const n=MOD_RUN[id].n, pass=n>=2;
     const first=!(S.modules[id]&&S.modules[id].done);
     if(pass){
@@ -1792,20 +1889,41 @@ function modPick(qi,oi,id){
    ============================================================ */
 VIEWS.quiz={render(root){
   root.innerHTML=`<div class="view" style="max-width:900px">
-  ${viewHead("Challenge arena","Knowledge Challenges","Timed quizzes. 15 seconds per question. Your best scores feed your Knowledge Score.")}
+  ${viewHead("Challenge arena","Knowledge Challenges","Timed quizzes. 15 seconds per question. Questions are drawn fresh from a growing bank — no two runs identical.")}
+  ${(function(){const today=new Date().toISOString().slice(0,10); const dd=S.daily&&S.daily.day===today&&S.daily.done;
+    return dd?`<div class="glass panel" style="margin-bottom:14px;border-color:rgba(52,211,153,.4)"><div class="row between wrap gap8"><div><b>📅 Daily Challenge complete</b><p class="tiny muted mt4">Score ${S.daily.score}/5 · streak ${S.streak} day${S.streak===1?"":"s"} 🔥 — 5 new questions arrive tomorrow.</p></div><button class="btn btn-ghost btn-sm" onclick="go('profile')">View profile</button></div></div>`
+    :`<div class="glass panel" style="margin-bottom:14px;border-color:rgba(94,230,255,.45)"><div class="row between wrap gap8"><div><b>📅 Daily Challenge</b><p class="tiny muted mt4">5 fresh questions from across the universe · once per day · keeps your streak alive 🔥</p></div><button class="btn btn-primary btn-sm" onclick="startDaily()">Start Daily →</button></div></div>`;})()}
   <div class="grid-cards">${QUIZZES.map(q=>{
     const best=S.quizzes[q.id];
     return `<div class="card" onclick="startQuiz('${q.id}')"><div class="c-ico">${q.icon}</div><b>${q.t}</b><p>${q.d}</p>
-    <div class="c-meta"><span>${q.qs.length} QUESTIONS</span><span>${best!==undefined?"BEST "+best+"/"+q.qs.length:"+ "+q.xp+" XP"}</span></div></div>`;
+    <div class="c-meta"><span>${q.ask||q.qs.length} OF ${q.qs.length} BANK</span><span>${best!==undefined?"BEST "+best+"/"+(q.ask||q.qs.length):"+ "+q.xp+" XP"}</span></div></div>`;
   }).join("")}</div>
   <p class="tiny muted mt14">Knowledge Score: <b class="acc">${quizAvgPct()}/100</b> — average of your best quiz results.</p>
   </div>`;
 }};
 let QZ=null;
+function pickQuizBank(id, bank, askN){
+  const seen=(S.quizSeen&&S.quizSeen[id])||[];
+  let idx=bank.map((_,i)=>i);
+  const fresh=idx.filter(i=>!seen.includes(i));
+  if(fresh.length>=askN) idx=fresh;
+  for(let j=idx.length-1;j>0;j--){ const r=Math.floor(Math.random()*(j+1)); [idx[j],idx[r]]=[idx[r],idx[j]]; }
+  const chosen=idx.slice(0,Math.min(askN,idx.length));
+  S.quizSeen=S.quizSeen||{}; S.quizSeen[id]=chosen;
+  return chosen.map(i=>shuffleQItem(bank[i]));
+}
 function startQuiz(id){
   const q0=QUIZZES.find(x=>x.id===id); if(!q0) return;
-  const q=Object.assign({},q0,{qs:q0.qs.map(shuffleQItem)});
-  QZ={q,i:0,n:0,timer:null,left:15};
+  qzBegin(Object.assign({},q0,{qs:pickQuizBank(q0.id,q0.qs,q0.ask||q0.qs.length)}),false);
+}
+function startDaily(){
+  const today=new Date().toISOString().slice(0,10);
+  if(S.daily&&S.daily.day===today&&S.daily.done) return toast("DAILY COMPLETE","Today's 5 questions are done — 5 fresh ones arrive tomorrow","📅");
+  const pool=[]; QUIZZES.forEach(qz=>qz.qs.forEach(item=>pool.push(item)));
+  qzBegin({id:"daily",icon:"📅",t:"Daily Challenge",xp:100,qs:pickQuizBank("daily",pool,5)},true);
+}
+function qzBegin(q,daily){
+  QZ={q,i:0,n:0,timer:null,left:15,daily};
   const root=document.getElementById("view-root");
   root.innerHTML=`<div class="view" style="max-width:760px">
   ${viewHead("Challenge in progress",q.icon+" "+q.t,"Answer quickly — the timer is part of the score.")}
@@ -1854,16 +1972,19 @@ function qzNext(){
 }
 function finishQuiz(){
   const q=QZ.q, n=QZ.n;
-  const prev=S.quizzes[q.id]!==undefined?S.quizzes[q.id]:-1;
-  const improved=n>prev;
-  if(prev<n) { S.quizzes[q.id]=n; save(); }
+  const isDaily=!!QZ.daily;
+  if(isDaily){ S.daily={day:new Date().toISOString().slice(0,10),done:true,score:n}; save(); }
+  else{
+    const prev=S.quizzes[q.id]!==undefined?S.quizzes[q.id]:-1;
+    if(prev<n) { S.quizzes[q.id]=n; save(); }
+  }
   award("quiz_ace");
-  if(q.id==="q5"&&n>=10) award("grand_champion");
-  const xp=Math.round(q.xp*n/q.qs.length);
+  if(!isDaily&&q.id==="q5"&&n>=10) award("grand_champion");
+  const xp= isDaily? 40+n*12 : Math.round(q.xp*n/q.qs.length);
   const root=document.getElementById("view-root");
   root.innerHTML=`<div class="view" style="max-width:640px">
   <div class="mars-report" style="border-color:rgba(94,230,255,.45);background:linear-gradient(170deg,rgba(14,30,66,.55),rgba(8,10,26,.7))">
-    <div class="mr-title" style="font-size:30px;background:linear-gradient(180deg,#fff,#7fc4ff);-webkit-background-clip:text;background-clip:text">CHALLENGE COMPLETE</div>
+    <div class="mr-title" style="font-size:30px;background:linear-gradient(180deg,#fff,#7fc4ff);-webkit-background-clip:text;background-clip:text">${isDaily?"DAILY CHALLENGE COMPLETE":"CHALLENGE COMPLETE"}</div>
     <div class="big-score">${n}/${q.qs.length}</div>
     <p class="small muted">${n===q.qs.length?"Flawless run — the stars salute you.":n>=q.qs.length*0.7?"Strong performance, explorer.":"Keep training — knowledge compounds like interest."}</p>
     <div class="mr-stats">
@@ -1872,7 +1993,7 @@ function finishQuiz(){
       <div class="mr-stat"><b>${quizAvgPct()}</b><span>Knowledge score</span></div>
     </div>
     <div class="row center gap8 mt10">
-      <button class="btn btn-primary btn-sm" onclick="startQuiz('${q.id}')">Retry</button>
+      <button class="btn btn-primary btn-sm" onclick="${isDaily?`go('quiz')`:`startQuiz('${q.id}')`}">${isDaily?"All Challenges":"Retry"}</button>
       <button class="btn btn-ghost btn-sm" onclick="go('quiz')">All Challenges</button>
     </div>
   </div></div>`;
@@ -1890,6 +2011,109 @@ VIEWS.badges={render(root){
     const got=S.badges.includes(b.id);
     return `<div class="badge ${got?"earned":"locked"}"><div class="b-ico">${b.icon}</div><b>${b.name}</b><span>${b.d}</span>${got?`<div class="b-date">✓ ${S.badgeDates[b.id]||"EARNED"}</div>`:""}</div>`;
   }).join("")}</div></div>`;
+}};
+
+/* ============================================================
+   EXPLORER LOGIN / PROFILE
+   ============================================================ */
+function escT(s){ return String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c])); }
+function openLogin(){
+  openModal(`
+    <div class="v-kicker">Explorer identity</div>
+    <div class="vtitle" style="font-size:24px;margin-bottom:14px">Log in · Register</div>
+    <div class="set-row"><label>Explorer callsign</label><input id="loginName" maxlength="24" placeholder="e.g. Dhanvi" value="${escT(S.name==="Explorer"?"":S.name)}"></div>
+    <p class="tiny muted mt10">Enter your callsign to continue your expedition on any device. If it already exists on the cloud leaderboard, your full progress is restored from Supabase. New callsigns are registered instantly — no password needed for this demo.</p>
+    <div class="row wrap gap8 mt14">
+      <button class="btn btn-primary btn-sm" onclick="doLogin()">Log in</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancel</button>
+    </div>`);
+}
+async function doLogin(){
+  const n=(document.getElementById("loginName").value||"").trim().slice(0,24);
+  if(!n) return toast("CALLSIGN NEEDED","Type a callsign to log in","⚠");
+  try{
+    const r=await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/${CONFIG.SUPABASE_LB_TABLE}?name=eq.${encodeURIComponent(n)}&select=explorer_id,name,xp&limit=1`,{headers:cloudHeaders()});
+    if(r.ok){
+      const rows=await r.json();
+      if(rows.length){
+        const rid=rows[0].explorer_id;
+        const r2=await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/${CONFIG.SUPABASE_TABLE}?explorer_id=eq.${rid}&select=*&limit=1`,{headers:cloudHeaders()});
+        if(r2.ok){
+          const rows2=await r2.json();
+          if(rows2.length){
+            const remote=rows2[0];
+            const rd=typeof remote.data==="string"?JSON.parse(remote.data):remote.data;
+            S=Object.assign(structuredClone(DEFAULT_STATE),rd,{id:rid});
+            S.cloudAt=Date.parse(remote.updated_at)||Date.now();
+            save(false); cloudPush();
+            closeModal(); renderTopbar(); go("profile");
+            toast("WELCOME BACK",`Cloud profile restored — ${rows[0].xp} XP, Level ${level()}`,"🛡",true);
+            return;
+          }
+        }
+        S.name=n; save(); cloudPush(); closeModal(); renderTopbar(); go("profile");
+        toast("CALLSIGN LINKED",`You are now flying as ${n}`,"🛡");
+        return;
+      }
+    }
+  }catch(e){}
+  S.name=n; save(); cloudPush(); closeModal(); renderTopbar(); go("profile");
+  toast("NEW EXPLORER REGISTERED",`Welcome to the fleet, ${n} — your profile is live`,"🌟",true);
+}
+function doLogout(){
+  if(!confirm("Log out and start a fresh explorer? Your cloud profile stays saved under its callsign.")) return;
+  S=structuredClone(DEFAULT_STATE); S.id=uid(); save(false);
+  renderTopbar(); go("control");
+  toast("LOGGED OUT","A fresh explorer awaits — log in anytime","👋");
+}
+VIEWS.profile={render(root){
+  const named=S.name&&S.name!=="Explorer";
+  const curLvl=xpForLevel(level()), nextLvl=xpForLevel(level()+1);
+  const pct=Math.max(0,Math.min(100,Math.round((S.xp-curLvl)/(nextLvl-curLvl)*100)));
+  const modsDone=Object.values(S.modules).filter(m=>m&&m.done).length;
+  const misDone=Object.values(S.missions).filter(m=>m&&m.done).length;
+  const memberSince=S.badgeDates[S.badges[0]]||new Date().toISOString().slice(0,10);
+  root.innerHTML=`<div class="view" style="max-width:880px">
+  ${viewHead("Explorer dossier","My Profile",named?"Your expedition record across the SpaceGenes+ universe — synced live to the global leaderboard.":"You are flying as a guest. Log in or set a callsign to appear on the global leaderboard.")}
+  <div class="glass panel hud">
+    <div class="row gap20 wrap" style="align-items:center">
+      <div style="font-size:64px;line-height:1">${lbAvatar(S.name)}</div>
+      <div style="flex:1;min-width:230px">
+        <div style="font-size:24px;font-weight:800;letter-spacing:.03em">${escT(S.name)}</div>
+        <div class="tiny acc mt4">${rank()} · LEVEL ${level()}</div>
+        <div class="xpbar mt10" style="height:10px"><div class="xpbar-fill" style="width:${pct}%"></div></div>
+        <div class="tiny muted mt6">${S.xp} XP · ${Math.max(0,nextLvl-S.xp)} XP to Level ${level()+1} · explorer since ${memberSince}</div>
+      </div>
+      <div class="col" style="gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="openSettings()">Edit callsign</button>
+        <button class="btn btn-ghost btn-sm" onclick="cloudPush();toast('SYNC','Pushing progress to cloud…','☁')">Sync now</button>
+        ${named?`<button class="btn btn-danger btn-sm" onclick="doLogout()">Log out</button>`:`<button class="btn btn-primary btn-sm" onclick="openLogin()">Log in</button>`}
+      </div>
+    </div>
+  </div>
+  <div class="mars-report mt14" style="text-align:left">
+    <div class="mr-stats">
+      <div class="mr-stat"><b>${S.xp}</b><span>Total XP</span></div>
+      <div class="mr-stat"><b>${level()}</b><span>Level</span></div>
+      <div class="mr-stat"><b>${S.badges.length}/${BADGES.length}</b><span>Badges</span></div>
+      <div class="mr-stat"><b>${modsDone}/11</b><span>Academy modules</span></div>
+      <div class="mr-stat"><b>${misDone}/4</b><span>Training missions</span></div>
+      <div class="mr-stat"><b>${quizAvgPct()}</b><span>Knowledge score</span></div>
+      <div class="mr-stat"><b>${S.mars.best||"—"}</b><span>Mars best</span></div>
+      <div class="mr-stat"><b>${S.streak}🔥</b><span>Day streak</span></div>
+      <div class="mr-stat"><b>${S.planetsViewed.length}/8</b><span>Planets visited</span></div>
+    </div>
+  </div>
+  <div class="glass panel mt14">
+    <div class="panel-title">◈ Badge shelf</div>
+    <div style="font-size:28px;line-height:1.6">${S.badges.length?S.badges.map(id=>{const b=BADGES.find(x=>x.id===id);return b?`<span title="${b.name} — ${b.d}">${b.icon}</span>`:""}).join(" "):`<span class="tiny muted">No badges yet — start exploring to earn your first!</span>`}</div>
+    <div class="row wrap gap8 mt14">
+      <button class="btn btn-primary btn-sm" onclick="go('leaderboard')">View Leaderboard</button>
+      <button class="btn btn-ghost btn-sm" onclick="go('badges')">Badge Gallery</button>
+      <button class="btn btn-ghost btn-sm" onclick="go('mars')">Fly to Mars 🚀</button>
+    </div>
+  </div>
+  </div>`;
 }};
 
 /* ============================================================
@@ -2499,6 +2723,8 @@ VIEWS.mars={render(root){
         <p class="small muted mt10">Commander, you will plan and fly a crewed expedition from Earth to Mars. You must:</p>
         <ul class="fact-list mt6">
           <li>Select a spacecraft — speed, cargo, reliability, fuel efficiency</li>
+          <li>Pick your crew of 3 — pilot, engineer, medic, scientist…</li>
+          <li>Plan life support — oxygen strategy and food for 200 million km</li>
           <li>Choose a launch window — fuel vs time vs radiation risk</li>
           <li>Manage fuel and hull through 200 million km of deep space</li>
           <li>Handle emergencies — solar storms, strikes, drift, dust</li>
@@ -2518,7 +2744,7 @@ VIEWS.mars={render(root){
 }};
 function marsBegin(){
   sfx("launch");
-  MRS={phase:"craft", fuel:0, hull:100, sci:0, pts:0, score:600, log:[], facts:[], alloc:null, craft:null, window:null, events:[], ei:0, edl:null, exps:[], failed:false};
+  MRS={phase:"craft", fuel:0, hull:100, sci:0, pts:0, score:600, log:[], facts:[], alloc:null, craft:null, crew:null, crewSel:[], mods:{}, supply:null, o2:100, window:null, events:[], ei:0, edl:null, exps:[], failed:false};
   marsPhase_craft();
 }
 function marsHUD(){
@@ -2526,6 +2752,8 @@ function marsHUD(){
     <div class="mh-cell"><div class="k">Mission phase</div><div class="v" style="font-size:12.5px" id="mhPhase">—</div></div>
     <div class="mh-cell"><div class="k">Fuel</div><div class="v"><span id="mhFuel">—</span><div class="bar"><i id="mhFuelBar" style="width:0%"></i></div></div></div>
     <div class="mh-cell"><div class="k">Hull integrity</div><div class="v"><span id="mhHull">—</span><div class="bar"><i id="mhHullBar" style="width:0%"></i></div></div></div>
+    <div class="mh-cell"><div class="k">Crew</div><div class="v" style="font-size:12.5px" id="mhCrew">—</div></div>
+    <div class="mh-cell"><div class="k">O₂ reserve</div><div class="v"><span id="mhO2">—</span><div class="bar"><i id="mhO2Bar" style="width:0%"></i></div></div></div>
     <div class="mh-cell"><div class="k">Science points</div><div class="v" id="mhSci">—</div></div>
   </div>`;
 }
@@ -2543,13 +2771,16 @@ function marsShell(inner, phase){
 function marsHUDUpdate(phase){
   phase=phase||MRS.phase;
   const p=document.getElementById("mhPhase"); if(!p) return;
-  const names={craft:"Spacecraft",window:"Launch window",alloc:"Fuel allocation",journey:"Deep space",edl:"Entry & landing",science:"Surface science",report:"Report"};
+  const names={craft:"Spacecraft",crew:"Crew selection",supply:"Life support",window:"Launch window",alloc:"Fuel allocation",journey:"Deep space",edl:"Entry & landing",science:"Surface science",report:"Report"};
   p.textContent=names[phase]||phase;
   const f=document.getElementById("mhFuel"), h=document.getElementById("mhHull");
   const fb=document.getElementById("mhFuelBar"), hb=document.getElementById("mhHullBar");
   if(f){ f.textContent=Math.round(MRS.fuel); fb.style.width=Math.max(0,Math.min(100,MRS.fuel))+"%"; }
   if(h){ h.textContent=Math.round(MRS.hull)+"%"; hb.style.width=Math.max(0,Math.min(100,MRS.hull))+"%"; }
   const sc=document.getElementById("mhSci"); if(sc) sc.textContent=MRS.sci;
+  const o2=document.getElementById("mhO2"), o2b=document.getElementById("mhO2Bar");
+  if(o2){ o2.textContent=Math.round(MRS.o2)+"%"; o2b.style.width=Math.max(0,Math.min(100,MRS.o2))+"%"; }
+  const cw=document.getElementById("mhCrew"); if(cw) cw.textContent=MRS.crew?MRS.crew.length+" specialists":(MRS.crewSel&&MRS.crewSel.length?MRS.crewSel.length+" / 3 picked":"—");
 }
 function marsPhase_craft(){
   MRS.phase="craft";
@@ -2571,12 +2802,72 @@ function marsPickCraft(i){
   MRS.craft=MARS_CRAFT[i];
   MRS.fuel=58+MRS.craft.eff*4;
   MRS.log.push(`Spacecraft selected: ${MRS.craft.name} (${MRS.craft.tag})`);
+  marsHUDUpdate(); marsPhase_crew();
+}
+function marsPhase_crew(){
+  MRS.phase="crew";
+  marsShell(`
+  <div class="mars-phase">PHASE 2 · SELECT YOUR CREW<span class="mp-line"></span></div>
+  <p class="small muted">Pick <b class="acc">3 specialists</b> from the candidate pool. Their skills change how the mission handles fuel, damage, science, health and oxygen.</p>
+  <div class="choice-grid">
+  ${MARS_CREW.map((c,i)=>`<button class="choice" id="crew-${i}" onclick="marsCrewToggle(${i})">
+    <div class="ch-tag">${c.role}</div><b>${c.icon} ${c.name}</b><p>${c.d}</p>
+  </button>`).join("")}
+  </div>
+  <div class="glass panel mt14">
+    <div class="row between"><span class="tiny muted">CREW MANIFEST</span><span class="tiny acc" id="crewList">none selected</span></div>
+    <button class="btn btn-primary w100 mt14" id="crewGo" onclick="marsCrewDone()" disabled>Confirm Crew →</button>
+  </div>`,"crew");
+}
+function marsCrewToggle(i){
+  const ix=MRS.crewSel.indexOf(i);
+  const btn=document.getElementById("crew-"+i); if(!btn) return;
+  if(ix>=0){ MRS.crewSel.splice(ix,1); btn.style.borderColor=""; btn.style.boxShadow=""; }
+  else{
+    if(MRS.crewSel.length>=3) return toast("MANIFEST FULL","A crewed Mars ship takes exactly 3 specialists","👥");
+    MRS.crewSel.push(i); btn.style.borderColor="rgba(94,230,255,.7)"; btn.style.boxShadow="0 0 20px rgba(70,168,255,.25)";
+  }
+  document.getElementById("crewList").textContent=MRS.crewSel.map(j=>MARS_CREW[j].name).join(" · ")||"none selected";
+  document.getElementById("crewGo").disabled=MRS.crewSel.length!==3;
+}
+function marsCrewDone(){
+  MRS.crew=MRS.crewSel.map(j=>MARS_CREW[j]);
+  const has=k=>MRS.crew.some(c=>c.skill===k);
+  MRS.mods={pilot:has("pilot"),engineer:has("engineer"),scientist:has("scientist"),medic:has("medic"),command:has("command"),life:has("life")};
+  MRS.log.push("Crew: "+MRS.crew.map(c=>c.name).join(", "));
+  marsHUDUpdate(); marsPhase_supplies();
+}
+function marsPhase_supplies(){
+  MRS.phase="supply";
+  marsShell(`
+  <div class="mars-phase">PHASE 3 · LIFE SUPPORT — OXYGEN & FOOD<span class="mp-line"></span></div>
+  <p class="small muted">Choose your oxygen and food strategy. It sets your starting <b class="acc">O₂ reserve</b> and trades fuel, hull and science for the whole mission.</p>
+  <div class="choice-grid">
+  ${MARS_SUPPLIES.map((s,i)=>`<button class="choice" onclick="marsPickSupply(${i})">
+    <div class="ch-tag">${s.food}</div><b>${s.icon} ${s.name.split(" + ")[0]}</b><p>${s.d}</p>
+    <div class="ch-stats">
+      <span class="ch-stat ${s.o2>=95?"good":""}">O₂ start ${s.o2}%${MRS.mods.life?"+6":""}</span>
+      ${s.fuel?`<span class="ch-stat ${s.fuel>0?"good":"bad"}">${s.fuel>0?"+":""}${s.fuel} fuel</span>`:""}
+      ${s.hull?`<span class="ch-stat ${s.hull>0?"good":"bad"}">${s.hull>0?"+":""}${s.hull} hull</span>`:""}
+      ${s.sci?`<span class="ch-stat good">+${s.sci} science</span>`:""}
+      <span class="ch-stat">${s.pts>=0?"+":""}${s.pts} decision pts</span>
+    </div></button>`).join("")}
+  </div>`,"supply");
+}
+function marsPickSupply(i){
+  const s=MARS_SUPPLIES[i]; MRS.supply=s;
+  MRS.o2=s.o2+(MRS.mods.life?6:0);
+  MRS.fuel+=s.fuel; MRS.hull+=s.hull;
+  MRS.sci+=MRS.mods.scientist?Math.round(s.sci*1.25):s.sci;
+  MRS.pts+=s.pts+(MRS.mods.command?10:0);
+  MRS.log.push("Life support: "+s.name);
+  MRS.facts.push(s.k);
   marsHUDUpdate(); marsPhase_window();
 }
 function marsPhase_window(){
   MRS.phase="window";
   marsShell(`
-  <div class="mars-phase">PHASE 2 · LAUNCH WINDOW<span class="mp-line"></span></div>
+  <div class="mars-phase">PHASE 4 · LAUNCH WINDOW<span class="mp-line"></span></div>
   <p class="small muted">Mars and Earth align properly every ~26 months. Choose your transfer strategy — it defines your fuel budget for the whole mission.</p>
   <div class="choice-grid">
   ${MARS_WINDOWS.map((w,i)=>`<button class="choice" onclick="marsPickWindow(${i})">
@@ -2597,7 +2888,7 @@ function marsPickWindow(i){
 function marsPhase_alloc(){
   MRS.phase="alloc";
   marsShell(`
-  <div class="mars-phase">PHASE 3 · FUEL & POWER BUDGET<span class="mp-line"></span></div>
+  <div class="mars-phase">PHASE 5 · FUEL & POWER BUDGET<span class="mp-line"></span></div>
   <p class="small muted">You have <b class="acc">${Math.round(MRS.fuel)} fuel units</b> and full power. Allocate your reserves for the journey — you can't have everything. (100 points to split)</p>
   <div class="glass panel">
     <div class="ctrl"><label>Engine reserve (for course corrections & arrival burn) <b id="alBurnV">50</b></label><input type="range" id="alBurn" min="0" max="100" value="50" oninput="marsAllocSlide()"></div>
@@ -2630,7 +2921,7 @@ function marsPhase_journey(){
   const ev=MRS.events[MRS.ei];
   const month=(2+MRS.ei*1.4).toFixed(1);
   marsShell(`
-  <div class="mars-phase">PHASE 4 · DEEP SPACE · MONTH ${month}<span class="mp-line"></span></div>
+  <div class="mars-phase">PHASE 6 · DEEP SPACE · MONTH ${month}<span class="mp-line"></span></div>
   <div class="event-card">
     <h3>${ev.title}</h3><p>${ev.p}</p>
     <div class="choice-grid">${ev.opts.map((o,i)=>`<button class="choice" onclick="marsEventChoice(${i})">
@@ -2639,6 +2930,7 @@ function marsPhase_journey(){
         ${o.fuel?`<span class="ch-stat ${o.fuel>0?"good":"bad"}">${o.fuel>0?"+":""}${o.fuel} fuel</span>`:""}
         ${o.hull?`<span class="ch-stat ${o.hull>0?"good":"bad"}">${o.hull>0?"+":""}${o.hull} hull</span>`:""}
         ${o.sci?`<span class="ch-stat ${o.sci>0?"good":"bad"}">${o.sci>0?"+":""}${o.sci} science</span>`:""}
+        ${o.o2?`<span class="ch-stat ${o.o2>0?"good":"bad"}">${o.o2>0?"+":""}${o.o2} O₂</span>`:""}
         <span class="ch-stat">${o.pts>=0?"+":""}${o.pts} decision pts</span>
       </div></button>`).join("")}
     </div>
@@ -2646,12 +2938,21 @@ function marsPhase_journey(){
 }
 function marsEventChoice(i){
   const ev=MRS.events[MRS.ei]; const o=ev.opts[i];
-  MRS.fuel+=o.fuel; MRS.hull+=o.hull; MRS.sci+=Math.max(0,o.sci); MRS.pts+=o.pts;
+  let df=o.fuel, dh=o.hull, ds=Math.max(0,o.sci), do2=(o.o2||0), dp=o.pts;
+  if(df<0&&MRS.mods.pilot) df=Math.ceil(df*.75);
+  if(dh<0&&MRS.mods.engineer) dh=Math.ceil(dh*.65);
+  if(ds>0&&MRS.mods.scientist) ds=Math.round(ds*1.25);
+  if(do2<0&&MRS.mods.life) do2=Math.ceil(do2*.6);
+  if(dp<0&&MRS.mods.medic) dp=Math.round(dp/2);
+  if(MRS.mods.command) dp+=5;
+  MRS.fuel+=df; MRS.hull+=dh; MRS.sci+=ds; MRS.o2+=do2; MRS.pts+=dp;
   MRS.log.push(`${ev.title}: ${o.t}`);
   MRS.facts.push(o.k);
+  const chips=[df?`fuel ${df>0?"+":""}${df}`:"",dh?`hull ${dh>0?"+":""}${dh}`:"",ds?`science +${ds}`:"",do2?`O₂ ${do2>0?"+":""}${do2}`:""].filter(Boolean).join(" · ");
   const body=document.getElementById("marsBody");
   body.insertAdjacentHTML("beforeend",`
-    <div class="feedback-box"><b>Outcome</b><p>${o.d} <span class="${o.pts>=0?"okc":"badc"}">(${o.pts>=0?"+":""}${o.pts} decision points)</span></p>
+    <div class="feedback-box"><b>Outcome</b><p>${o.d} <span class="${dp>=0?"okc":"badc"}">(${dp>=0?"+":""}${dp} decision points)</span></p>
+    ${chips?`<div class="tiny muted mt6">▸ Applied: ${chips}${(MRS.mods.pilot||MRS.mods.engineer||MRS.mods.medic||MRS.mods.life||MRS.mods.command||MRS.mods.scientist)?" (crew skills applied)":""}</div>`:""}
     <div class="kfact">◈ Knowledge gained: ${o.k}</div>
     <button class="btn btn-primary btn-sm mt14" onclick="marsNextEvent()">${MRS.ei+1<MRS.events.length?"Continue Journey →":"Approach Mars →"}</button></div>`);
   marsHUDUpdate();
@@ -2660,13 +2961,14 @@ function marsEventChoice(i){
 }
 function marsNextEvent(){
   MRS.ei++;
+  if(MRS.o2<=0) return marsFail("Oxygen reserves exhausted. Life support is the one system with zero tolerance — redundancy and conservative planning are how real crews come home.");
   if(MRS.fuel<=0) return marsFail("Fuel exhausted before Mars arrival. Deep space gives no second chances — reserve management is the heart of real mission design.");
   marsPhase_journey();
 }
 function marsPhase_edl(){
   MRS.phase="edl";
   marsShell(`
-  <div class="mars-phase">PHASE 5 · ENTRY, DESCENT & LANDING<span class="mp-line"></span></div>
+  <div class="mars-phase">PHASE 7 · ENTRY, DESCENT & LANDING<span class="mp-line"></span></div>
   <p class="small muted">The terrifying final 7 minutes: from interplanetary speed to a soft landing, fully automated. Mars's thin atmosphere is a poor brake — choose your profile.</p>
   <div class="choice-grid">
   ${MARS_EDL.map((e,i)=>`<button class="choice" onclick="marsEDL(${i})">
@@ -2681,7 +2983,9 @@ function marsPhase_edl(){
 function marsEDL(i){
   const e=MARS_EDL[i];
   const relBonus=(MRS.craft.rel-6)*3;
-  MRS.fuel+=e.fuel; MRS.hull+=e.hull+Math.round(relBonus/2); MRS.pts+=e.pts;
+  let dh=e.hull+Math.round(relBonus/2);
+  if(dh<0&&MRS.mods.engineer) dh=Math.ceil(dh*.65);
+  MRS.fuel+=e.fuel; MRS.hull+=dh; MRS.pts+=e.pts+(MRS.mods.command?5:0);
   MRS.edl=e; MRS.log.push(`Landing profile: ${e.name}`);
   MRS.facts.push(e.k);
   if(MRS.hull<=0) return marsFail("Landing failed — the surface is unforgiving. EDL is where missions are won or lost; safety margins matter more than daring.");
@@ -2692,7 +2996,7 @@ function marsPhase_science(){
   MRS.phase="science";
   const power=MRS.alloc.sci;
   marsShell(`
-  <div class="mars-phase">PHASE 6 · SURFACE SCIENCE<span class="mp-line"></span></div>
+  <div class="mars-phase">PHASE 8 · SURFACE SCIENCE<span class="mp-line"></span></div>
   <p class="small muted">Touchdown confirmed. You have <b class="acc">${power} science power</b> available from your budget allocation. Select experiments — their combined cost must fit your power. Choose up to 3 for maximum discovery.</p>
   <div class="choice-grid">
   ${MARS_SCI.map((e,i)=>`<button class="choice" id="exp-${i}" onclick="marsExpToggle(${i})">
@@ -2723,14 +3027,14 @@ function marsExpToggle(i){
 }
 function marsSciDone(){
   if(!MRS.exps.length) return toast("SELECT EXPERIMENTS","Choose at least one experiment, Commander","🔬");
-  MRS.exps.forEach(j=>{ MRS.sci+=MARS_SCI[j].sci; MRS.facts.push(MARS_SCI[j].k); MRS.log.push("Deployed: "+MARS_SCI[j].name); });
+  MRS.exps.forEach(j=>{ MRS.sci+=MRS.mods.scientist?Math.round(MARS_SCI[j].sci*1.25):MARS_SCI[j].sci; MRS.facts.push(MARS_SCI[j].k); MRS.log.push("Deployed: "+MARS_SCI[j].name); });
   marsReport();
 }
 function marsReport(){
   MRS.phase="report"; sfx("levelup");
   const score=Math.max(0,Math.round(600+MRS.sci+MRS.fuel*7+MRS.hull*4+MRS.pts*4));
   const grade=score>=1700?"S":score>=1400?"A":score>=1100?"B":score>=850?"C":"D";
-  const xp=Math.round(score/9);
+  const xp=Math.min(500,Math.round(score/4));
   const firstSuccess=score>=850;
   S.mars.runs++;
   if(score>S.mars.best) S.mars.best=score;
@@ -2740,6 +3044,7 @@ function marsReport(){
   <div class="mars-report">
     <div class="mr-title">MISSION COMPLETE</div>
     <div class="mr-grade">${MRS.craft.name} · ${MRS.window.name} · ${MRS.edl.name}</div>
+    <div class="mr-grade" style="font-size:12px">👨‍🚀 Crew: ${MRS.crew?MRS.crew.map(c=>c.icon+" "+c.name).join(" · "):"—"}${MRS.supply?` · ${MRS.supply.icon} ${MRS.supply.name.split(" + ")[0]}`:""}</div>
     <div class="big-score mt14" style="background:linear-gradient(180deg,#fff,#ffc9a8);-webkit-background-clip:text;background-clip:text">${score}</div>
     <div class="mr-grade">GRADE ${grade} · ${grade==="S"?"Flawless command — NASA is calling":grade==="A"?"Outstanding expedition":grade==="B"?"Solid mission, Commander":grade==="C"?"The mission survived — barely":"A rough ride, but the knowledge was worth it"}</div>
     <div class="mr-stats">
@@ -2747,7 +3052,8 @@ function marsReport(){
       <div class="mr-stat"><b>${Math.round(MRS.fuel)}</b><span>Fuel left</span></div>
       <div class="mr-stat"><b>${Math.round(MRS.hull)}%</b><span>Hull</span></div>
       <div class="mr-stat"><b>+${xp}</b><span>XP earned</span></div>
-      <div class="mr-stat"><b>🎖️</b><span>${firstSuccess?"Mars Pioneer":"Replay"}</span></div>
+      <div class="mr-stat"><b>${MRS.crew?MRS.crew.map(c=>c.icon).join(""):"🎖️"}</b><span>Crew home safe</span></div>
+      <div class="mr-stat"><b>${Math.round(MRS.o2)}%</b><span>O₂ remaining</span></div>
     </div>
     <div class="decision-log">
       <h3 class="sec">Decisions made</h3>
@@ -2763,6 +3069,7 @@ function marsReport(){
   if(firstSuccess){
     addXP(xp,"Mission to Mars complete — grade "+grade);
     award("mars_pioneer");
+    award("mars_explorer");
   } else addXP(Math.round(xp/2),"Mars attempt — lessons learned");
 }
 function marsFail(reason){

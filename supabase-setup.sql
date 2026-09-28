@@ -69,6 +69,7 @@ create index if not exists idx_leaderboard_xp
 
 -- ---------- SAMPLE EXPLORERS (demo seed) ----------
 insert into public.leaderboard (explorer_id, name, xp, level, rank, badges, mars_best, seeded) values
+  (gen_random_uuid(), 'Dhanvi',        1500, 6, 'MISSION SPECIALIST',   10, 1750, true),
   (gen_random_uuid(), 'NebulaNova',   1420, 6, 'NAVIGATOR',    9, 1618, true),
   (gen_random_uuid(), 'OrionPilot',    980, 5, 'EXPLORER',     7, 1420, true),
   (gen_random_uuid(), 'ISROdreamer',   720, 4, 'EXPLORER',     6, 1255, true),

@@ -80,6 +80,7 @@ Fail states included — running out of fuel or hull integrity triggers an educa
 |---|---|---|
 | GitHub Pages | https://gorleramacharan-lab.github.io/spacegenes-plus/ | Serves repo root |
 | Render | https://spacegenes-plus.onrender.com/ | Serves `public/` · auto-deploys on push |
+| Vercel | https://spacegenes-plus.vercel.app | API-uploaded · instant static deploys |
 
 ## 🚀 Run It
 
