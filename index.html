@@ -134,6 +134,12 @@ main,header,.topbar{position:relative;z-index:2}
 .tb-btn.mars-nav.active{background:linear-gradient(135deg,#ff9d6c,#e2582a);color:#2a0d03;box-shadow:0 0 16px rgba(255,125,80,.45)}
 .tb-btn.login-nav{color:#5ee6ff}
 #nav-profile span{max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pg-back-wrap{max-width:1180px;margin:0 auto;width:100%;padding:0 22px}
+.pg-back{display:inline-flex;align-items:center;gap:7px;margin:14px 0 0;padding:8px 16px 8px 12px;font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#9fc3ef;background:rgba(10,18,40,.5);border:1px solid rgba(94,230,255,.22);border-radius:999px;cursor:pointer;backdrop-filter:blur(8px);transition:all .18s;animation:viewIn .5s cubic-bezier(.2,.8,.2,1) both;font-family:inherit}
+.pg-back svg{width:14px;height:14px;flex:none}
+.pg-back:hover{color:#eaf5ff;border-color:rgba(94,230,255,.65);background:rgba(20,40,80,.62);transform:translateX(-3px);box-shadow:0 0 18px rgba(70,168,255,.25)}
+.pg-back:active{transform:translateX(-1px) scale(.98)}
+@media(max-width:560px){.pg-back-wrap{padding:0 14px}.pg-back{font-size:10px;padding:7px 13px 7px 10px;letter-spacing:.06em}}
 .tb-right{display:flex;align-items:center;gap:10px;white-space:nowrap}
 .xp-pill{display:flex;flex-direction:column;gap:4px;min-width:150px;padding:6px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(10,18,42,.6)}
 .xp-pill .row1{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.14em;color:var(--mut);text-transform:uppercase}
@@ -861,7 +867,12 @@ function renderTopbar(){
   </div>`;
 }
 let CURRENT_VIEW=""; let NAV_HIST=[]; let BACKING=false;
-function goBack(){ const p=NAV_HIST.pop(); BACKING=true; try{ if(p&&VIEWS[p]) go(p); else goHome(); } finally{ BACKING=false; } }
+function goBack(){ const p=NAV_HIST.pop(); BACKING=true; try{ if(p&&VIEWS[p]) go(p); else if(CURRENT_VIEW==="control") goHome(); else go("control"); } finally{ BACKING=false; } }
+function pgBackHTML(){
+  const prev=NAV_HIST[NAV_HIST.length-1];
+  const lbl=prev?((NAV.find(n=>n.id===prev)||{}).label||"Previous page"):"Mission Control";
+  return `<div class="pg-back-wrap"><button class="pg-back" onclick="goBack()" title="Return to ${lbl} — your progress is saved">${ICONS.back}<span>Back to ${lbl}</span></button></div>`;
+}
 function renderIfActive(){ if(CURRENT_VIEW && VIEWS[CURRENT_VIEW]) go(CURRENT_VIEW, null, true); }
 function go(id, param, noScroll){
   if(id==="home") return goHome();
@@ -872,7 +883,7 @@ function go(id, param, noScroll){
   document.querySelectorAll(".tb-btn").forEach(b=>b.classList.toggle("active", b.id==="nav-"+id));
   const root=document.getElementById("view-root");
   const v=VIEWS[id];
-  if(v){ root.innerHTML=""; try{ v.render(root,param); }catch(e){ root.innerHTML=`<div class="view"><p class="badc">View error: ${e.message}</p></div>`; console.error(e);} }
+  if(v){ root.innerHTML=""; try{ v.render(root,param); if(id!=="control") root.insertAdjacentHTML("afterbegin", pgBackHTML()); }catch(e){ root.innerHTML=`<div class="view"><p class="badc">View error: ${e.message}</p></div>`; console.error(e);} }
   if(!noScroll) window.scrollTo({top:0,behavior:"smooth"});
 }
 function goHome(){
