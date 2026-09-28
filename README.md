@@ -74,6 +74,13 @@ Fail states included — running out of fuel or hull integrity triggers an educa
 - Progress in localStorage; optional Supabase cloud sync
 - All content is original and fact-checked (planets, missions incl. ISRO's Chandrayaan-3 & Mangalyaan, astrophysics modules)
 
+## 🌐 Live Deployments
+
+| Platform | URL | Notes |
+|---|---|---|
+| GitHub Pages | https://gorleramacharan-lab.github.io/spacegenes-plus/ | Serves repo root |
+| Render | https://spacegenes-plus.onrender.com/ | Serves `public/` · auto-deploys on push |
+
 ## 🚀 Run It
 
 ```bash
